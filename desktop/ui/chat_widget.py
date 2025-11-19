@@ -1,6 +1,7 @@
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QTextEdit, QLineEdit, QPushButton, QHBoxLayout, QLabel
 from PyQt5.QtCore import Qt, QThread, pyqtSignal, QTimer
-from PyQt5.QtGui import QTextCursor, QTextCharFormat, QColor
+from PyQt5.QtGui import QTextCursor, QTextCharFormat, QColor, QIcon
+import os
 from desktop.core.neural_network import NeuralNetwork
 from desktop.utils.chat_history import ChatHistory
 import datetime
@@ -68,20 +69,70 @@ class ChatWidget(QWidget):
         self.input_field.setFrame(False)
         center_layout.addWidget(self.input_field)
         
-        # Контейнер для кнопок
+        # Контейнер для кнопок и иконок
         buttons_container = QWidget()
         buttons_layout = QHBoxLayout()
         buttons_layout.setContentsMargins(0, 0, 0, 0)
         buttons_layout.setSpacing(8)
-        buttons_layout.addStretch()
         buttons_container.setLayout(buttons_layout)
+        
+        # Получаем путь к иконкам
+        icons_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'ui', 'images')
+        
+        # Добавляем иконки слева
+        self.theme_button = QPushButton()
+        self.theme_button.setFixedSize(32, 32)
+        self.theme_button.setToolTip('Переключить тему')
+        icon_path = os.path.join(icons_dir, 'theme.png')
+        if os.path.exists(icon_path):
+            self.theme_button.setIcon(QIcon(icon_path))
+            self.theme_button.setIconSize(self.theme_button.size())
+        buttons_layout.addWidget(self.theme_button)
+        
+        self.clear_button = QPushButton()
+        self.clear_button.setFixedSize(32, 32)
+        self.clear_button.setToolTip('Очистить чат')
+        icon_path = os.path.join(icons_dir, 'clear.png')
+        if os.path.exists(icon_path):
+            self.clear_button.setIcon(QIcon(icon_path))
+            self.clear_button.setIconSize(self.clear_button.size())
+        buttons_layout.addWidget(self.clear_button)
+        
+        self.history_button = QPushButton()
+        self.history_button.setFixedSize(32, 32)
+        self.history_button.setToolTip('История')
+        icon_path = os.path.join(icons_dir, 'history.png')
+        if os.path.exists(icon_path):
+            self.history_button.setIcon(QIcon(icon_path))
+            self.history_button.setIconSize(self.history_button.size())
+        buttons_layout.addWidget(self.history_button)
+        
+        self.statistics_button = QPushButton()
+        self.statistics_button.setFixedSize(32, 32)
+        self.statistics_button.setToolTip('Статистика')
+        icon_path = os.path.join(icons_dir, 'monitor.png')
+        if os.path.exists(icon_path):
+            self.statistics_button.setIcon(QIcon(icon_path))
+            self.statistics_button.setIconSize(self.statistics_button.size())
+        buttons_layout.addWidget(self.statistics_button)
+        
+        self.actions_button = QPushButton()
+        self.actions_button.setFixedSize(32, 32)
+        self.actions_button.setToolTip('Действия')
+        icon_path = os.path.join(icons_dir, 'actions.png')
+        if os.path.exists(icon_path):
+            self.actions_button.setIcon(QIcon(icon_path))
+            self.actions_button.setIconSize(self.actions_button.size())
+        buttons_layout.addWidget(self.actions_button)
         
         self.loading_label = QLabel('')
         self.loading_label.setAlignment(Qt.AlignCenter)
         self.loading_label.setVisible(False)
         buttons_layout.addWidget(self.loading_label)
         
-        # Маленькие красивые кнопки
+        buttons_layout.addStretch()
+        
+        # Маленькие красивые кнопки справа
         self.send_button = QPushButton('Отправить')
         self.send_button.clicked.connect(self.send_message)
         self.send_button.setFixedHeight(32)
@@ -93,8 +144,6 @@ class ChatWidget(QWidget):
         self.tag_button.setFixedWidth(70)
         self.tag_button.setCheckable(True)
         buttons_layout.addWidget(self.tag_button)
-        
-        buttons_layout.addStretch()
         
         center_layout.addWidget(buttons_container)
         
@@ -113,6 +162,27 @@ class ChatWidget(QWidget):
         
         # Применяем стили по умолчанию
         self._apply_default_styles()
+        
+        # Применяем стили к иконкам
+        icon_button_style = """
+            QPushButton {
+                background-color: rgba(0, 0, 0, 0.05);
+                border: 1px solid rgba(0, 0, 0, 0.2);
+                border-radius: 16px;
+                padding: 4px;
+            }
+            QPushButton:hover {
+                background-color: rgba(0, 0, 0, 0.1);
+            }
+            QPushButton:pressed {
+                background-color: rgba(0, 0, 0, 0.15);
+            }
+        """
+        self.theme_button.setStyleSheet(icon_button_style)
+        self.clear_button.setStyleSheet(icon_button_style)
+        self.history_button.setStyleSheet(icon_button_style)
+        self.statistics_button.setStyleSheet(icon_button_style)
+        self.actions_button.setStyleSheet(icon_button_style)
         
     def _apply_default_styles(self):
         """Применяет стили по умолчанию (светлая тема)"""

@@ -84,6 +84,28 @@ class MainWindow(QMainWindow):
         self.chat_widget = ChatWidget(self.neural_network, self)
         layout.addWidget(self.chat_widget)
         
+        # Подключаем обработчики для кнопок в chat_widget
+        self.chat_widget.theme_button.clicked.connect(self.toggle_theme)
+        self.chat_widget.clear_button.clicked.connect(self.chat_widget.clear_chat)
+        self.chat_widget.history_button.clicked.connect(self.open_history)
+        self.chat_widget.statistics_button.clicked.connect(self.open_statistics)
+        
+        # Создаем меню для кнопки действий в chat_widget
+        chat_actions_menu = QMenu(self)
+        chat_history_action = chat_actions_menu.addAction('📚 Открыть историю')
+        chat_history_action.triggered.connect(self.open_history)
+        
+        chat_backup_action = chat_actions_menu.addAction('💾 Создать бэкап')
+        chat_backup_action.triggered.connect(self.open_backup_dialog)
+        
+        chat_monitor_action = chat_actions_menu.addAction('📊 Мониторинг')
+        chat_monitor_action.triggered.connect(self.open_resource_monitor)
+        
+        chat_quick_actions = chat_actions_menu.addAction('⚡ Быстрые действия')
+        chat_quick_actions.triggered.connect(self.open_quick_actions)
+        
+        self.chat_widget.actions_button.setMenu(chat_actions_menu)
+        
         # Создаем панель кнопок внизу
         self.bottom_buttons_panel = QWidget()
         bottom_layout = QHBoxLayout()
