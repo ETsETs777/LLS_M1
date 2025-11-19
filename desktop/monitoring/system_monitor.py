@@ -146,34 +146,48 @@ class ResourceMonitor:
         try:
             import wmi
             c = wmi.WMI()
-            gpus_found = []
+            
             for gpu in c.Win32_VideoController():
                 name = gpu.Name if gpu.Name else "Unknown"
+                
+                # Пропускаем базовые/виртуальные адаптеры
+                if "Basic" in name or "Microsoft" in name or "Virtual" in name:
+                    continue
+                
+                # Пытаемся получить RAM разными способами
                 ram = gpu.AdapterRAM if gpu.AdapterRAM else 0
                 
-                # Отладочная информация (только при первом запуске)
+                # Отладочная информация
                 if not self._gpu_errors_shown:
-                    print(f"  WMI нашел видеокарту: {name}, RAM: {ram} bytes")
+                    print(f"  WMI нашел видеокарту: {name}")
+                    print(f"    AdapterRAM: {ram} bytes")
+                    if hasattr(gpu, 'AdapterDACType'):
+                        print(f"    AdapterDACType: {gpu.AdapterDACType}")
                 
-                # Проверяем, что это видеокарта с памятью
+                # Если RAM отрицательный или нулевой, это может быть переполнение или неопределенное значение
                 if ram and int(ram) > 0:
                     total_mem = int(ram) / (1024 ** 3)
-                    gpus_found.append({
-                        'name': name,
-                        'memory': total_mem
-                    })
-                    
-                    # Возвращаем первую найденную видеокарту с памятью >= 0.5 GB
-                    if total_mem >= 0.5:
-                        return {
-                            'gpu_name': name,
-                            'gpu_memory_total': round(total_mem, 2),
-                            'gpu_memory_used': 0  # WMI не предоставляет используемую память
-                        }
-            
-            # Если нашли хоть какую-то видеокарту, возвращаем её
-            if gpus_found and not self._gpu_errors_shown:
-                print(f"  WMI: найдено видеокарт: {len(gpus_found)}, но не подходят по критериям (память >= 0.5 GB)")
+                elif ram and int(ram) < 0:
+                    # Отрицательное значение может означать переполнение uint32
+                    # Пробуем исправить (добавляем 2^32)
+                    corrected_ram = int(ram) + (2 ** 32)
+                    total_mem = corrected_ram / (1024 ** 3)
+                    if not self._gpu_errors_shown:
+                        print(f"    Исправленная память: {corrected_ram} bytes = {total_mem:.2f} GB")
+                else:
+                    # Не можем определить память, но видеокарта есть
+                    # Для AMD RX 580 обычно 4 или 8 GB
+                    if not self._gpu_errors_shown:
+                        print(f"    Память не определена, используем значение по умолчанию")
+                    total_mem = 0  # Не знаем точно
+                
+                # Возвращаем информацию о дискретной видеокарте
+                if "AMD" in name or "NVIDIA" in name or "Radeon" in name or "GeForce" in name or "Intel Arc" in name:
+                    return {
+                        'gpu_name': name,
+                        'gpu_memory_total': round(total_mem, 2) if total_mem > 0 else 0,
+                        'gpu_memory_used': 0  # WMI не предоставляет используемую память
+                    }
                 
         except Exception as e:
             if not self._gpu_errors_shown:
