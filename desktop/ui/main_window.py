@@ -1,26 +1,8 @@
-from PyQt5.QtWidgets import QMainWindow, QVBoxLayout, QWidget, QPushButton, QHBoxLayout, QMenuBar, QMenu, QAction, QStatusBar
-from PyQt5.QtCore import Qt, QThread, pyqtSignal
-from PyQt5.QtGui import QIcon
+from PyQt5.QtWidgets import QMainWindow, QVBoxLayout, QWidget, QPushButton, QHBoxLayout, QAction, QStatusBar
 from desktop.ui.chat_widget import ChatWidget
 from desktop.ui.theme_manager import ThemeManager
 from desktop.core.neural_network import NeuralNetwork
 from desktop.config.settings import Settings
-
-class ResponseThread(QThread):
-    response_ready = pyqtSignal(str)
-    error_occurred = pyqtSignal(str)
-    
-    def __init__(self, neural_network, user_input):
-        super().__init__()
-        self.neural_network = neural_network
-        self.user_input = user_input
-        
-    def run(self):
-        try:
-            response = self.neural_network.generate_response(self.user_input)
-            self.response_ready.emit(response)
-        except Exception as e:
-            self.error_occurred.emit(str(e))
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -28,7 +10,6 @@ class MainWindow(QMainWindow):
         self.settings = Settings()
         self.theme_manager = ThemeManager()
         self.neural_network = NeuralNetwork()
-        self.response_thread = None
         self.init_ui()
         self.load_window_state()
         self.apply_theme(self.settings.get_theme())
@@ -126,7 +107,4 @@ class MainWindow(QMainWindow):
         
     def closeEvent(self, event):
         self.save_window_state()
-        if self.response_thread and self.response_thread.isRunning():
-            self.response_thread.terminate()
-            self.response_thread.wait()
         event.accept()

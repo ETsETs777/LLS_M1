@@ -1,24 +1,21 @@
-import os
-import time
+from typing import Dict
+
 from desktop.config.settings import Settings
+from desktop.core.model_manager import ModelManager
+
 
 class NeuralNetwork:
     def __init__(self):
         self.settings = Settings()
-        self.model_path = self.settings.get_model_path()
-        self.model = None
-        self.load_model()
-        
-    def load_model(self):
-        if os.path.exists(self.model_path):
-            pass
-        
+        self.model_manager = ModelManager(
+            model_path=self.settings.get_model_path(),
+            generation_params=self.settings.get_generation_config()
+        )
+
+    def _build_prompt(self, user_input: str) -> str:
+        system_prompt = self.settings.get_prompt().strip()
+        return f'{system_prompt}\nПользователь: {user_input}\nАссистент:'
+
     def generate_response(self, user_input: str) -> str:
-        if not user_input:
-            return "Пожалуйста, введите вопрос."
-        
-        time.sleep(0.5)
-        
-        response = f"Это ответ на ваш вопрос: '{user_input}'. В будущем здесь будет работать реальная модель нейросети."
-        
-        return response
+        prompt = self._build_prompt(user_input)
+        return self.model_manager.generate(prompt)

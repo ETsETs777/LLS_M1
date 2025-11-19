@@ -1,2 +1,5 @@
 PyQt5==5.15.10
+torch==2.1.2
+transformers==4.38.1
+safetensors==0.4.2
 
