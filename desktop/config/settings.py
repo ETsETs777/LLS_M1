@@ -29,6 +29,7 @@ class Settings:
     def default_config(self) -> Dict[str, Any]:
         base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
         data_dir = os.path.join(base_dir, 'data')
+        knowledge_path = os.path.join(base_dir, 'desktop', 'knowledge', 'articles.json')
         return {
             'model_path': os.path.join(base_dir, 'models'),
             'theme': 'light',
@@ -59,6 +60,15 @@ class Settings:
                         'name': 'Поиск в сети',
                         'description': 'Стартовый плагин для интеграции веб-поиска.',
                         'config': {}
+                    },
+                    'knowledge_base': {
+                        'module': 'desktop.plugins.examples.knowledge_base',
+                        'class': 'KnowledgeBasePlugin',
+                        'name': 'База знаний',
+                        'description': 'Ответы на основе локальной коллекции статей.',
+                        'config': {
+                            'data_path': knowledge_path
+                        }
                     }
                 }
             },

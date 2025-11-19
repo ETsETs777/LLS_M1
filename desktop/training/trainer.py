@@ -7,6 +7,7 @@ from desktop.training.config import TrainingConfig
 from desktop.training.dataset import ConversationDataset
 from desktop.training.utils import seed_everything
 from desktop.training.reports.report_builder import ReportBuilder
+from desktop.training.reports.plotter import ReportPlotter
 from desktop.training.evaluation import EvaluationRunner
 
 
@@ -74,6 +75,17 @@ class FineTuningTrainer:
             tokenized_eval = eval_dataset.map(self.tokenize_function, remove_columns=eval_dataset.column_names)
         return tokenized_train, tokenized_eval
 
+    def _collect_history(self, log_history):
+        metric_history: Dict[str, list] = {}
+        for entry in log_history:
+            step = entry.get('step')
+            if step is None:
+                continue
+            for key in ('loss', 'eval_loss', 'eval_accuracy', 'eval_perplexity'):
+                if key in entry and isinstance(entry[key], (int, float)):
+                    metric_history.setdefault(key, []).append({'step': step, 'value': entry[key]})
+        return metric_history
+
     def run(self):
         train_dataset, eval_dataset = self._prepare_datasets()
         data_collator = DataCollatorForLanguageModeling(self.tokenizer, mlm=False)
@@ -93,10 +105,16 @@ class FineTuningTrainer:
         self.tokenizer.save_pretrained(self.config.output_dir)
         report_dir = self.config.report_dir or self.config.output_dir
         builder = ReportBuilder(report_dir)
-        builder.save(metrics, {
+        report_meta = builder.save(metrics, {
             'max_steps': self.config.max_steps,
             'learning_rate': self.config.learning_rate,
             'dataset_paths': self.config.dataset_paths or [self.config.dataset_path],
             'eval_dataset_path': self.config.eval_dataset_path
         })
+        history = self._collect_history(trainer.state.log_history)
+        if history:
+            plotter = ReportPlotter(report_dir)
+            plot_name = f"metrics-{report_meta['timestamp']}.png"
+            plot_path = plotter.plot_metrics(history, plot_name)
+            report_meta['plot'] = plot_path
 

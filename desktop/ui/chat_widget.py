@@ -30,6 +30,7 @@ class ChatWidget(QWidget):
         self.loading_timer = QTimer()
         self.loading_timer.timeout.connect(self.update_loading_indicator)
         self.loading_dots = 0
+        self.pending_tags = []
         self.init_ui()
         self.load_history()
         
@@ -59,6 +60,10 @@ class ChatWidget(QWidget):
         self.input_field.setPlaceholderText('Введите ваш вопрос...')
         self.input_field.returnPressed.connect(self.send_message)
         input_row.addWidget(self.input_field)
+
+        self.tag_field = QLineEdit()
+        self.tag_field.setPlaceholderText('Теги (через запятую)')
+        input_row.addWidget(self.tag_field)
         
         self.send_button = QPushButton('Отправить')
         self.send_button.clicked.connect(self.send_message)
@@ -76,8 +81,10 @@ class ChatWidget(QWidget):
         if self.response_thread and self.response_thread.isRunning():
             return
             
+        tags = self._current_tags()
+        self.pending_tags = tags
         self.add_user_message(user_message)
-        self.chat_history.add_message('user', user_message)
+        self.chat_history.add_message('user', user_message, tags=tags)
         self.input_field.clear()
         
         self.send_button.setEnabled(False)
@@ -92,13 +99,13 @@ class ChatWidget(QWidget):
         
     def on_response_received(self, response):
         self.hide_loading_indicator()
-        self.add_bot_message(response)
-        self.chat_history.add_message('assistant', response)
+        self.add_bot_message(response, self.pending_tags)
+        self.chat_history.add_message('assistant', response, tags=self.pending_tags)
         self.chat_history.save_history()
         
     def on_error_occurred(self, error_msg):
         self.hide_loading_indicator()
-        self.add_error_message(error_msg)
+        self.add_error_message(error_msg, self.pending_tags)
         
     def on_thread_finished(self):
         self.send_button.setEnabled(True)
@@ -107,19 +114,22 @@ class ChatWidget(QWidget):
         
     def add_user_message(self, message):
         timestamp = datetime.datetime.now().strftime('%H:%M')
-        formatted = f'<div style="margin: 10px 0;"><b style="color: #0078d4;">Вы</b> <span style="color: #666; font-size: 0.9em;">({timestamp})</span><br><div style="background-color: #e3f2fd; padding: 10px; border-radius: 8px; margin-top: 5px;">{self.escape_html(message)}</div></div>'
+        tags_html = self._format_tags(self.pending_tags)
+        formatted = f'<div style="margin: 10px 0;"><b style="color: #0078d4;">Вы</b> <span style="color: #666; font-size: 0.9em;">({timestamp})</span>{tags_html}<br><div style="background-color: #e3f2fd; padding: 10px; border-radius: 8px; margin-top: 5px;">{self.escape_html(message)}</div></div>'
         self.chat_display.append(formatted)
         self.scroll_to_bottom()
         
-    def add_bot_message(self, message):
+    def add_bot_message(self, message, tags=None):
         timestamp = datetime.datetime.now().strftime('%H:%M')
-        formatted = f'<div style="margin: 10px 0;"><b style="color: #28a745;">Нейросеть</b> <span style="color: #666; font-size: 0.9em;">({timestamp})</span><br><div style="background-color: #f5f5f5; padding: 10px; border-radius: 8px; margin-top: 5px;">{self.escape_html(message)}</div></div>'
+        tags_html = self._format_tags(tags)
+        formatted = f'<div style="margin: 10px 0;"><b style="color: #28a745;">Нейросеть</b> <span style="color: #666; font-size: 0.9em;">({timestamp})</span>{tags_html}<br><div style="background-color: #f5f5f5; padding: 10px; border-radius: 8px; margin-top: 5px;">{self.escape_html(message)}</div></div>'
         self.chat_display.append(formatted)
         self.scroll_to_bottom()
         
-    def add_error_message(self, error_msg):
+    def add_error_message(self, error_msg, tags=None):
         timestamp = datetime.datetime.now().strftime('%H:%M')
-        formatted = f'<div style="margin: 10px 0;"><b style="color: #dc3545;">Ошибка</b> <span style="color: #666; font-size: 0.9em;">({timestamp})</span><br><div style="background-color: #ffebee; padding: 10px; border-radius: 8px; margin-top: 5px; color: #c62828;">{self.escape_html(error_msg)}</div></div>'
+        tags_html = self._format_tags(tags)
+        formatted = f'<div style="margin: 10px 0;"><b style="color: #dc3545;">Ошибка</b> <span style="color: #666; font-size: 0.9em;">({timestamp})</span>{tags_html}<br><div style="background-color: #ffebee; padding: 10px; border-radius: 8px; margin-top: 5px; color: #c62828;">{self.escape_html(error_msg)}</div></div>'
         self.chat_display.append(formatted)
         self.scroll_to_bottom()
         
@@ -154,9 +164,10 @@ class ChatWidget(QWidget):
         history = self.chat_history.load_history()
         for msg in history:
             if msg['role'] == 'user':
+                self.pending_tags = msg.get('tags', [])
                 self.add_user_message(msg['content'])
             elif msg['role'] == 'assistant':
-                self.add_bot_message(msg['content'])
+                self.add_bot_message(msg['content'], msg.get('tags', []))
                 
     def apply_theme(self, theme, stylesheet):
         self.setStyleSheet(stylesheet)
@@ -182,3 +193,15 @@ class ChatWidget(QWidget):
                 }
             """)
             self.loading_label.setStyleSheet("color: #000000;")
+
+    def _current_tags(self):
+        raw = self.tag_field.text().strip()
+        if not raw:
+            return []
+        return [tag.strip() for tag in raw.split(',') if tag.strip()]
+
+    def _format_tags(self, tags):
+        if not tags:
+            return ''
+        tags_str = ' '.join(f'#{self.escape_html(tag)}' for tag in tags)
+        return f' <span style="color:#999; font-size:0.85em;">{tags_str}</span>'

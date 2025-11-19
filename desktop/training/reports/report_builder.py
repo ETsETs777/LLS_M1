@@ -22,7 +22,7 @@ class ReportBuilder:
             json.dump(payload, f, ensure_ascii=False, indent=2)
         with open(md_path, 'w', encoding='utf-8') as f:
             f.write(self._markdown(payload))
-        return {'json': json_path, 'markdown': md_path}
+        return {'json': json_path, 'markdown': md_path, 'timestamp': timestamp}
 
     def _markdown(self, payload: Dict[str, Any]) -> str:
         lines = [
@@ -35,4 +35,5 @@ class ReportBuilder:
         for key, value in payload['config'].items():
             lines.append(f"- {key}: {value}")
         return '\n'.join(lines)
+
 

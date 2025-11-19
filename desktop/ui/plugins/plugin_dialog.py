@@ -6,7 +6,8 @@ from PyQt5.QtWidgets import (
     QPushButton,
     QHBoxLayout,
     QLineEdit,
-    QLabel
+    QLabel,
+    QPlainTextEdit
 )
 from PyQt5.QtCore import Qt
 
@@ -46,9 +47,9 @@ class PluginDialog(QDialog):
         execute_layout.addWidget(run_button)
         layout.addLayout(execute_layout)
 
-        self.result_label = QLabel('')
-        self.result_label.setWordWrap(True)
-        layout.addWidget(self.result_label)
+        self.result_view = QPlainTextEdit()
+        self.result_view.setReadOnly(True)
+        layout.addWidget(self.result_view)
 
     def _refresh_list(self):
         self.list_widget.clear()
@@ -83,5 +84,6 @@ class PluginDialog(QDialog):
         if not plugin_id:
             return
         response = self.manager.execute(plugin_id, self.query_input.text())
-        self.result_label.setText(response)
+        self.result_view.setPlainText(response)
+
 

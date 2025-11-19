@@ -37,6 +37,12 @@ class HistoryDialog(QDialog):
         self.search_field.textChanged.connect(self._load_messages)
         filter_layout.addWidget(self.search_field)
 
+        self.tags_field = QLineEdit()
+        self.tags_field.setPlaceholderText('Теги через запятую')
+        self.tags_field.textChanged.connect(self._load_messages)
+        filter_layout.addWidget(QLabel('Теги'))
+        filter_layout.addWidget(self.tags_field)
+
         self.start_date = QDateEdit()
         self.start_date.setCalendarPopup(True)
         self.start_date.setDisplayFormat('dd.MM.yyyy')
@@ -94,6 +100,7 @@ class HistoryDialog(QDialog):
 
     def _reset_filters(self):
         self.search_field.clear()
+        self.tags_field.clear()
         self.start_date_active = False
         self.end_date_active = False
         self._load_messages()
@@ -102,7 +109,8 @@ class HistoryDialog(QDialog):
         keyword = self.search_field.text().strip()
         start = self._date_to_datetime(self.start_date) if self.start_date_active else None
         end = self._date_to_datetime(self.end_date) if self.end_date_active else None
-        messages = self.history_manager.search(keyword=keyword, start=start, end=end)
+        tags = [tag.strip() for tag in self.tags_field.text().split(',') if tag.strip()]
+        messages = self.history_manager.search(keyword=keyword, start=start, end=end, tags=tags or None)
         self.history_list.clear()
         for msg in reversed(messages):
             item = QListWidgetItem(f"{msg['timestamp']} | {msg['role']} | {msg['content']}")
@@ -117,12 +125,14 @@ class HistoryDialog(QDialog):
         path, _ = QFileDialog.getSaveFileName(self, 'Сохранить историю', filter=filters.get(fmt, '*.*'))
         if not path:
             return
+        tags = [tag.strip() for tag in self.tags_field.text().split(',') if tag.strip()]
         target = self.history_manager.export(
             fmt,
             path,
             keyword=self.search_field.text().strip(),
             start=self._date_to_datetime(self.start_date),
-            end=self._date_to_datetime(self.end_date)
+            end=self._date_to_datetime(self.end_date),
+            tags=tags or None
         )
         QMessageBox.information(self, 'Экспорт завершен', f'История сохранена в {target}')
 
