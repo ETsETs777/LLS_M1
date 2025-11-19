@@ -1,12 +1,13 @@
 from dataclasses import dataclass
-from typing import Callable, List
+from typing import Callable, List, Optional
 
 
 @dataclass
 class QuickAction:
     label: str
     description: str
-    handler: Callable[[], None]
+    handler: Callable[[Optional[str]], None]
+    requires_input: bool = False
 
 
 class QuickActionsManager:

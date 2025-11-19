@@ -1,3 +1,4 @@
+import json
 import os
 from datetime import datetime
 from typing import List, Dict, Optional
@@ -48,4 +49,21 @@ class HistoryManager:
         filtered = [msg for msg in all_messages if datetime.fromisoformat(msg['timestamp']).timestamp() >= threshold]
         if len(filtered) != len(all_messages):
             self.history._save_all(filtered)
+
+    def list_archives(self) -> List[str]:
+        return self.history.list_archives()
+
+    def read_archive(self, filename: str) -> List[Dict]:
+        archive_path = self.get_archive_path(filename)
+        if not os.path.exists(archive_path):
+            return []
+        with open(archive_path, 'r', encoding='utf-8') as f:
+            try:
+                return json.load(f)
+            except json.JSONDecodeError:
+                return []
+
+    def get_archive_path(self, filename: str) -> str:
+        return os.path.join(self.history.history_dir, 'archives', filename)
+
 

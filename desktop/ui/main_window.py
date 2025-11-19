@@ -1,6 +1,8 @@
 import json
 import os
-from typing import Optional
+from collections import Counter
+from datetime import datetime, date
+from typing import Optional, Dict, List
 
 from PyQt5.QtCore import QTimer
 from PyQt5.QtWidgets import QMainWindow, QVBoxLayout, QWidget, QPushButton, QAction, QStatusBar, QMessageBox, QLabel
@@ -12,6 +14,7 @@ from desktop.config.settings import Settings
 from desktop.ui.settings.settings_dialog import SettingsDialog
 from desktop.history.manager import HistoryManager
 from desktop.ui.history.history_dialog import HistoryDialog
+from desktop.ui.history.history_archive_dialog import HistoryArchiveDialog
 from desktop.monitoring.system_monitor import ResourceMonitor
 from desktop.ui.widgets.status_panel import StatusPanel
 from desktop.plugins.manager import PluginManager
@@ -42,6 +45,7 @@ class MainWindow(QMainWindow):
         self.update_manager = UpdateManager(self.settings)
         self.backup_manager = BackupManager(self.settings)
         self.training_status_label = QLabel('Обучение: нет данных')
+        self._latest_training_status = 'Нет данных'
         self.quick_actions = QuickActionsManager()
         updater_cfg = self.settings.get_updater_config()
         if updater_cfg.get('verify_models_on_start'):
@@ -61,6 +65,7 @@ class MainWindow(QMainWindow):
         self.monitor_timer.start(5000)
         self.training_timer.start(10000)
         self._update_training_status_label()
+        self._update_dashboard_metrics()
         
     def init_ui(self):
         self.setWindowTitle('Нейросеть Чат')
@@ -121,6 +126,10 @@ class MainWindow(QMainWindow):
         history_action.setShortcut('Ctrl+H')
         history_action.triggered.connect(self.open_history)
         tools_menu.addAction(history_action)
+
+        archive_action = QAction('Архивы истории', self)
+        archive_action.triggered.connect(self.open_history_archives)
+        tools_menu.addAction(archive_action)
 
         plugins_action = QAction('Плагины', self)
         plugins_action.triggered.connect(self.open_plugins)
@@ -237,6 +246,10 @@ class MainWindow(QMainWindow):
         dialog = HistoryDialog(self.history_manager, self)
         dialog.exec_()
 
+    def open_history_archives(self):
+        dialog = HistoryArchiveDialog(self.history_manager, self)
+        dialog.exec_()
+
     def open_plugins(self):
         dialog = PluginDialog(self.plugin_manager, self)
         dialog.exec_()
@@ -291,6 +304,7 @@ class MainWindow(QMainWindow):
         self.status_panel.update_metrics(metrics)
         self._check_vram(metrics)
         self.status_bar.showMessage('Мониторинг обновлён')
+        self._update_dashboard_metrics()
 
     def reload_model(self):
         try:
@@ -338,25 +352,44 @@ class MainWindow(QMainWindow):
             timestamp = payload.get('timestamp')
             summary = payload.get('message') or payload.get('details') or ''
             suffix = f" · {timestamp}" if timestamp else ''
-            self.training_status_label.setText(f'{icon} Обучение: {status}{suffix} {summary[:30]}')
+            text = f'{icon} Обучение: {status}{suffix} {summary[:30]}'
+            self.training_status_label.setText(text)
+            self._latest_training_status = f'{icon} {status}'
         elif raw:
             self.training_status_label.setText(f'Обучение: {raw[:60]}')
+            self._latest_training_status = raw[:60]
         else:
             self.training_status_label.setText('Обучение: статус неизвестен')
+            self._latest_training_status = 'статус неизвестен'
 
     def _setup_quick_actions(self):
         self.quick_actions = QuickActionsManager()
         self.quick_actions.register(
-            QuickAction('Очистить чат', 'Удаляет историю текущей сессии и поле ввода.', self.chat_widget.clear_chat)
+            QuickAction('Очистить чат', 'Удаляет историю текущей сессии и поле ввода.', lambda _: self.chat_widget.clear_chat())
         )
         self.quick_actions.register(
-            QuickAction('Показать статус обучения', 'Открывает последнее сообщение о ходе обучения.', self.show_training_status)
+            QuickAction('Показать статус обучения', 'Открывает последнее сообщение о ходе обучения.', lambda _: self.show_training_status())
         )
         self.quick_actions.register(
-            QuickAction('Перезагрузить модель', 'Перезапускает модель и обновляет настройки генерации.', self.reload_model)
+            QuickAction('Перезагрузить модель', 'Перезапускает модель и обновляет настройки генерации.', lambda _: self.reload_model())
         )
         self.quick_actions.register(
-            QuickAction('Открыть историю', 'Переходит к журналу диалогов с фильтрами.', self.open_history)
+            QuickAction('Открыть историю', 'Переходит к журналу диалогов с фильтрами.', lambda _: self.open_history())
+        )
+        self.quick_actions.register(
+            QuickAction('Открыть архивы', 'Просмотр сохранённых архивов истории.', lambda _: self.open_history_archives())
+        )
+        self.quick_actions.register(
+            QuickAction('Переключить тему', 'Быстро меняет светлую/тёмную тему.', lambda _: self.toggle_theme())
+        )
+        self.quick_actions.register(
+            QuickAction('Найти в истории', 'Ищет сообщения по ключевому слову и выводит первые совпадения.', self._quick_search_history, requires_input=True)
+        )
+        self.quick_actions.register(
+            QuickAction('Установить температуру', 'Задаёт новое значение температуры генерации (например, 0.7).', self._quick_set_temperature, requires_input=True)
+        )
+        self.quick_actions.register(
+            QuickAction('Открыть настройки', 'Открывает окно настроек приложения.', lambda _: self.open_settings())
         )
 
     def _get_training_status_payload(self):
@@ -386,3 +419,57 @@ class MainWindow(QMainWindow):
         if normalized in ('failed', 'error'):
             return '🔴'
         return '⚪'
+
+    def _quick_search_history(self, term: Optional[str]):
+        keyword = (term or '').strip()
+        if not keyword:
+            QMessageBox.warning(self, 'Требуется ввод', 'Введите слово или фразу для поиска.')
+            return
+        matches = self.history_manager.search(keyword=keyword)
+        if not matches:
+            QMessageBox.information(self, 'Результат поиска', f'Сообщений с «{keyword}» не найдено.')
+            return
+        preview = '\n\n'.join(f"{item['timestamp']}: {item['content']}" for item in matches[-3:])
+        QMessageBox.information(self, 'Результат поиска', f'Найдено {len(matches)} сообщений.\n\n{preview}')
+
+    def _quick_set_temperature(self, value: Optional[str]):
+        raw = (value or '').strip()
+        try:
+            temp = float(raw)
+        except ValueError:
+            QMessageBox.warning(self, 'Некорректное значение', 'Введите число, например 0.7.')
+            return
+        self.settings.update_generation_config({'temperature': temp})
+        self.neural_network.update_generation_params({'temperature': temp})
+        QMessageBox.information(self, 'Температура обновлена', f'Новая температура: {temp}')
+
+    def _update_dashboard_metrics(self):
+        messages = self.history_manager.list_messages(limit=None)
+        total_messages = len(messages)
+        today = datetime.utcnow().date()
+        messages_today = sum(1 for msg in messages if self._message_date(msg) == today)
+        session_ids = {msg.get('session_id') for msg in messages if msg.get('session_id')}
+        sessions_today = {msg.get('session_id') for msg in messages if msg.get('session_id') and self._message_date(msg) == today}
+        active_plugins = sum(1 for plugin in self.plugin_manager.list_plugins() if plugin.enabled)
+
+        self.dashboard.update_card('sessions', str(len(session_ids)), f'+{len(sessions_today)} сегодня')
+        self.dashboard.update_card('messages', str(total_messages), f'+{messages_today} сегодня')
+        self.dashboard.update_card('active_plugins', str(active_plugins))
+        self.dashboard.update_card('training', self._latest_training_status or 'нет данных')
+
+        tag_counter = Counter()
+        for msg in messages:
+            for tag in msg.get('tags', []):
+                tag_counter[tag] += 1
+        top_tags = tag_counter.most_common(3)
+        analytics_lines = [f'#{tag}: {count}' for tag, count in top_tags] if top_tags else ['Нет данных по тегам']
+        self.dashboard.update_analytics(analytics_lines)
+
+    def _message_date(self, message: Dict) -> Optional[date]:
+        ts = message.get('timestamp')
+        if not ts:
+            return None
+        try:
+            return datetime.fromisoformat(ts).date()
+        except ValueError:
+            return None

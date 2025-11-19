@@ -1,3 +1,5 @@
+from typing import List
+
 from PyQt5.QtWidgets import QWidget, QGridLayout, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QSizePolicy
 from PyQt5.QtCore import Qt
 
@@ -48,13 +50,36 @@ class DashboardWidget(QWidget):
         actions_layout.setContentsMargins(0, 0, 0, 0)
         actions_layout.setSpacing(8)
         self.actions_container.setLayout(actions_layout)
-        for label in ('Открыть историю', 'Создать бэкап', 'Настройки'):
-            btn = QPushButton(label)
+        self.primary_action_button = QPushButton('Открыть историю')
+        self.secondary_action_button = QPushButton('Создать бэкап')
+        self.settings_action_button = QPushButton('Настройки')
+        for btn in (self.primary_action_button, self.secondary_action_button, self.settings_action_button):
             btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
             actions_layout.addWidget(btn)
         grid.addWidget(self.actions_container, 2, 0, 1, 2)
 
+        self.analytics_box = QWidget()
+        analytics_layout = QVBoxLayout()
+        analytics_layout.setContentsMargins(12, 12, 12, 12)
+        analytics_layout.setSpacing(4)
+        self.analytics_box.setLayout(analytics_layout)
+        title = QLabel('Аналитика диалогов')
+        title.setStyleSheet('font-size:13px; font-weight:bold;')
+        self.analytics_label = QLabel('Нет данных по аналитике.')
+        self.analytics_label.setWordWrap(True)
+        self.analytics_label.setStyleSheet('color:#555;')
+        analytics_layout.addWidget(title)
+        analytics_layout.addWidget(self.analytics_label)
+        self.analytics_box.setStyleSheet('QWidget { border: 1px solid #e1e1e1; border-radius: 10px; background: #f9fafb; }')
+        grid.addWidget(self.analytics_box, 3, 0, 1, 2)
+
     def update_card(self, key: str, value: str, subtitle: str = ''):
         if key in self.cards:
             self.cards[key].update_value(value, subtitle)
+
+    def update_analytics(self, lines: List[str]):
+        if not lines:
+            self.analytics_label.setText('Нет данных по аналитике.')
+        else:
+            self.analytics_label.setText('\n'.join(lines))
 
