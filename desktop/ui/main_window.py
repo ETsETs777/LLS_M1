@@ -25,7 +25,7 @@ from desktop.ui.backup.backup_dialog import BackupDialog
 from desktop.ui.user.user_admin_dialog import UserAdminDialog
 from desktop.shortcuts.actions import QuickActionsManager, QuickAction
 from desktop.shortcuts.quick_actions_dialog import QuickActionsDialog
-from desktop.ui.dashboard.dashboard_widget import DashboardWidget
+from desktop.ui.dashboard.statistics_dialog import StatisticsDialog
 from desktop.ui.monitoring.monitor_dialog import MonitorDialog
 
 class MainWindow(QMainWindow):
@@ -67,6 +67,7 @@ class MainWindow(QMainWindow):
         self.training_timer.start(10000)
         self._update_training_status_label()
         self._update_dashboard_metrics()
+        self.statistics_dialog = None
         
     def init_ui(self):
         self.setWindowTitle('Нейросеть Чат')
@@ -78,9 +79,6 @@ class MainWindow(QMainWindow):
         layout = QVBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
         central_widget.setLayout(layout)
-        
-        self.dashboard = DashboardWidget(self)
-        layout.addWidget(self.dashboard)
 
         self.chat_widget = ChatWidget(self.neural_network, self)
         layout.addWidget(self.chat_widget)
@@ -218,6 +216,12 @@ class MainWindow(QMainWindow):
         history_button.clicked.connect(self.open_history)
         history_button.setFixedHeight(32)
         bottom_layout.addWidget(history_button)
+        
+        # Кнопка статистики
+        statistics_button = QPushButton('📊 Статистика')
+        statistics_button.clicked.connect(self.open_statistics)
+        statistics_button.setFixedHeight(32)
+        bottom_layout.addWidget(statistics_button)
         
         # Кнопка действий с выпадающим меню
         self.actions_button = QPushButton('⚙️ Действия')
@@ -361,6 +365,47 @@ class MainWindow(QMainWindow):
     def open_resource_monitor(self):
         dialog = MonitorDialog(self.resource_monitor, self)
         dialog.exec_()
+    
+    def open_statistics(self):
+        """Открывает окно статистики"""
+        if self.statistics_dialog is None or not self.statistics_dialog.isVisible():
+            self.statistics_dialog = StatisticsDialog(self)
+            # Обновляем статистику перед показом
+            self._update_statistics_dialog()
+            self.statistics_dialog.exec_()
+        else:
+            self.statistics_dialog.raise_()
+            self.statistics_dialog.activateWindow()
+    
+    def _update_statistics_dialog(self):
+        """Обновляет данные в окне статистики"""
+        if self.statistics_dialog is None or not self.statistics_dialog.isVisible():
+            return
+        
+        messages = self.history_manager.list_messages(limit=None)
+        total_messages = len(messages)
+        today = datetime.utcnow().date()
+        messages_today = sum(1 for msg in messages if self._message_date(msg) == today)
+        session_ids = {msg.get('session_id') for msg in messages if msg.get('session_id')}
+        sessions_today = {msg.get('session_id') for msg in messages if msg.get('session_id') and self._message_date(msg) == today}
+        active_plugins = sum(1 for plugin in self.plugin_manager.list_plugins() if plugin.enabled)
+        
+        tag_counter = Counter()
+        for msg in messages:
+            for tag in msg.get('tags', []):
+                tag_counter[tag] += 1
+        top_tags = tag_counter.most_common(3)
+        analytics_lines = [f'#{tag}: {count}' for tag, count in top_tags] if top_tags else ['Нет данных по тегам']
+        
+        self.statistics_dialog.update_statistics(
+            sessions=str(len(session_ids)),
+            messages=str(total_messages),
+            plugins=str(active_plugins),
+            training=self._latest_training_status or 'нет данных',
+            sessions_subtitle=f'+{len(sessions_today)} сегодня',
+            messages_subtitle=f'+{messages_today} сегодня',
+            analytics_lines=analytics_lines
+        )
 
     def verify_models(self):
         result = self.update_manager.verify_models()
@@ -397,7 +442,7 @@ class MainWindow(QMainWindow):
         self.status_panel.update_metrics(metrics)
         self._check_vram(metrics)
         self.status_bar.showMessage('Мониторинг обновлён')
-        self._update_dashboard_metrics()
+        self._update_dashboard_metrics()  # Обновляет статистику, если окно открыто
 
     def reload_model(self):
         try:
@@ -540,26 +585,9 @@ class MainWindow(QMainWindow):
         QMessageBox.information(self, 'Температура обновлена', f'Новая температура: {temp}')
 
     def _update_dashboard_metrics(self):
-        messages = self.history_manager.list_messages(limit=None)
-        total_messages = len(messages)
-        today = datetime.utcnow().date()
-        messages_today = sum(1 for msg in messages if self._message_date(msg) == today)
-        session_ids = {msg.get('session_id') for msg in messages if msg.get('session_id')}
-        sessions_today = {msg.get('session_id') for msg in messages if msg.get('session_id') and self._message_date(msg) == today}
-        active_plugins = sum(1 for plugin in self.plugin_manager.list_plugins() if plugin.enabled)
-
-        self.dashboard.update_card('sessions', str(len(session_ids)), f'+{len(sessions_today)} сегодня')
-        self.dashboard.update_card('messages', str(total_messages), f'+{messages_today} сегодня')
-        self.dashboard.update_card('active_plugins', str(active_plugins))
-        self.dashboard.update_card('training', self._latest_training_status or 'нет данных')
-
-        tag_counter = Counter()
-        for msg in messages:
-            for tag in msg.get('tags', []):
-                tag_counter[tag] += 1
-        top_tags = tag_counter.most_common(3)
-        analytics_lines = [f'#{tag}: {count}' for tag, count in top_tags] if top_tags else ['Нет данных по тегам']
-        self.dashboard.update_analytics(analytics_lines)
+        """Обновляет метрики (теперь только для окна статистики)"""
+        # Обновляем окно статистики, если оно открыто
+        self._update_statistics_dialog()
 
     def _message_date(self, message: Dict) -> Optional[date]:
         ts = message.get('timestamp')
