@@ -5,7 +5,7 @@ from datetime import datetime, date
 from typing import Optional, Dict, List
 
 from PyQt5.QtCore import QTimer, Qt
-from PyQt5.QtWidgets import QMainWindow, QVBoxLayout, QWidget, QPushButton, QAction, QStatusBar, QMessageBox, QLabel, QHBoxLayout
+from PyQt5.QtWidgets import QMainWindow, QVBoxLayout, QWidget, QPushButton, QAction, QStatusBar, QMessageBox, QLabel, QHBoxLayout, QMenu
 
 from desktop.ui.chat_widget import ChatWidget
 from desktop.ui.theme_manager import ThemeManager
@@ -81,10 +81,6 @@ class MainWindow(QMainWindow):
         
         self.dashboard = DashboardWidget(self)
         layout.addWidget(self.dashboard)
-        self.dashboard.set_action_handler('history', 'Открыть историю', self.open_history)
-        self.dashboard.set_action_handler('backup', 'Создать бэкап', self.open_backup_dialog)
-        self.dashboard.set_action_handler('monitor', 'Мониторинг', self.open_resource_monitor)
-        # Убираем кнопку настроек из dashboard
 
         self.chat_widget = ChatWidget(self.neural_network, self)
         layout.addWidget(self.chat_widget)
@@ -223,20 +219,26 @@ class MainWindow(QMainWindow):
         history_button.setFixedHeight(32)
         bottom_layout.addWidget(history_button)
         
-        quick_button = QPushButton('⚡ Действия')
-        quick_button.clicked.connect(self.open_quick_actions)
-        quick_button.setFixedHeight(32)
-        bottom_layout.addWidget(quick_button)
+        # Кнопка действий с выпадающим меню
+        self.actions_button = QPushButton('⚙️ Действия')
+        self.actions_button.setFixedHeight(32)
         
-        monitor_button = QPushButton('📊 Мониторинг')
-        monitor_button.clicked.connect(self.open_resource_monitor)
-        monitor_button.setFixedHeight(32)
-        bottom_layout.addWidget(monitor_button)
+        # Создаем меню для кнопки действий
+        actions_menu = QMenu(self)
+        history_action = actions_menu.addAction('📚 Открыть историю')
+        history_action.triggered.connect(self.open_history)
         
-        backup_button = QPushButton('💾 Бэкап')
-        backup_button.clicked.connect(self.open_backup_dialog)
-        backup_button.setFixedHeight(32)
-        bottom_layout.addWidget(backup_button)
+        backup_action = actions_menu.addAction('💾 Создать бэкап')
+        backup_action.triggered.connect(self.open_backup_dialog)
+        
+        monitor_action = actions_menu.addAction('📊 Мониторинг')
+        monitor_action.triggered.connect(self.open_resource_monitor)
+        
+        quick_actions_action = actions_menu.addAction('⚡ Быстрые действия')
+        quick_actions_action.triggered.connect(self.open_quick_actions)
+        
+        self.actions_button.setMenu(actions_menu)
+        bottom_layout.addWidget(self.actions_button)
         
         bottom_layout.addStretch()
         
