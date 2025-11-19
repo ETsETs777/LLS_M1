@@ -1,6 +1,6 @@
 from typing import Callable, Dict, List
 
-from PyQt5.QtWidgets import QWidget, QGridLayout, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QSizePolicy
+from PyQt5.QtWidgets import QWidget, QGridLayout, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QSizePolicy, QMenu
 from PyQt5.QtCore import Qt
 
 
@@ -50,16 +50,44 @@ class DashboardWidget(QWidget):
         actions_layout.setContentsMargins(0, 0, 0, 0)
         actions_layout.setSpacing(8)
         self.actions_container.setLayout(actions_layout)
-        self.action_buttons: Dict[str, QPushButton] = {}
+        
+        # Создаем одну объединенную кнопку с меню
+        self.unified_button = QPushButton('⚙️ Действия')
+        self.unified_button.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        self.unified_button.setStyleSheet("""
+            QPushButton {
+                background-color: #0078d4;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                padding: 10px;
+                font-size: 14px;
+                font-weight: 500;
+            }
+            QPushButton:hover {
+                background-color: #106ebe;
+            }
+            QPushButton:pressed {
+                background-color: #005a9e;
+            }
+        """)
+        
+        # Создаем меню для кнопки
+        self.actions_menu = QMenu(self)
+        
+        # Создаем действия для меню
+        self.menu_actions = {}
         for key, label in (
-            ('history', 'Открыть историю'),
-            ('backup', 'Создать бэкап'),
-            ('monitor', 'Мониторинг')
+            ('history', '📚 Открыть историю'),
+            ('backup', '💾 Создать бэкап'),
+            ('monitor', '📊 Мониторинг')
         ):
-            btn = QPushButton(label)
-            btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
-            self.action_buttons[key] = btn
-            actions_layout.addWidget(btn)
+            action = self.actions_menu.addAction(label)
+            self.menu_actions[key] = action
+        
+        self.unified_button.setMenu(self.actions_menu)
+        actions_layout.addWidget(self.unified_button)
+        
         grid.addWidget(self.actions_container, 2, 0, 1, 2)
 
         self.analytics_box = QWidget()
@@ -88,13 +116,13 @@ class DashboardWidget(QWidget):
             self.analytics_label.setText('\n'.join(lines))
 
     def set_action_handler(self, key: str, label: str, handler: Callable[[], None]):
-        button = self.action_buttons.get(key)
-        if not button:
+        action = self.menu_actions.get(key)
+        if not action:
             return
-        button.setText(label)
+        action.setText(label)
         try:
-            button.clicked.disconnect()
+            action.triggered.disconnect()
         except Exception:
             pass
-        button.clicked.connect(handler)
+        action.triggered.connect(handler)
 
