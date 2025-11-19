@@ -22,6 +22,7 @@ from desktop.ui.backup.backup_dialog import BackupDialog
 from desktop.ui.user.user_admin_dialog import UserAdminDialog
 from desktop.shortcuts.actions import QuickActionsManager, QuickAction
 from desktop.shortcuts.quick_actions_dialog import QuickActionsDialog
+from desktop.ui.dashboard.dashboard_widget import DashboardWidget
 
 class MainWindow(QMainWindow):
     def __init__(self, settings: Optional[Settings] = None, user_repository=None):
@@ -76,6 +77,9 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(0, 0, 0, 0)
         central_widget.setLayout(layout)
         
+        self.dashboard = DashboardWidget(self)
+        layout.addWidget(self.dashboard)
+
         self.chat_widget = ChatWidget(self.neural_network, self)
         layout.addWidget(self.chat_widget)
         self._setup_quick_actions()
