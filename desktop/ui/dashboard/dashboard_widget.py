@@ -1,4 +1,4 @@
-from typing import List
+from typing import Callable, Dict, List
 
 from PyQt5.QtWidgets import QWidget, QGridLayout, QLabel, QPushButton, QVBoxLayout, QHBoxLayout, QSizePolicy
 from PyQt5.QtCore import Qt
@@ -50,11 +50,16 @@ class DashboardWidget(QWidget):
         actions_layout.setContentsMargins(0, 0, 0, 0)
         actions_layout.setSpacing(8)
         self.actions_container.setLayout(actions_layout)
-        self.primary_action_button = QPushButton('Открыть историю')
-        self.secondary_action_button = QPushButton('Создать бэкап')
-        self.settings_action_button = QPushButton('Настройки')
-        for btn in (self.primary_action_button, self.secondary_action_button, self.settings_action_button):
+        self.action_buttons: Dict[str, QPushButton] = {}
+        for key, label in (
+            ('history', 'Открыть историю'),
+            ('backup', 'Создать бэкап'),
+            ('monitor', 'Мониторинг'),
+            ('settings', 'Настройки')
+        ):
+            btn = QPushButton(label)
             btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+            self.action_buttons[key] = btn
             actions_layout.addWidget(btn)
         grid.addWidget(self.actions_container, 2, 0, 1, 2)
 
@@ -82,4 +87,15 @@ class DashboardWidget(QWidget):
             self.analytics_label.setText('Нет данных по аналитике.')
         else:
             self.analytics_label.setText('\n'.join(lines))
+
+    def set_action_handler(self, key: str, label: str, handler: Callable[[], None]):
+        button = self.action_buttons.get(key)
+        if not button:
+            return
+        button.setText(label)
+        try:
+            button.clicked.disconnect()
+        except Exception:
+            pass
+        button.clicked.connect(handler)
 

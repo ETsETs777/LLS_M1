@@ -14,3 +14,4 @@ class WebSearchPlugin(Plugin):
         timestamp = datetime.now().strftime('%H:%M:%S')
         return f'[{timestamp}] Результаты поиска для "{query}" будут доступны после интеграции с API.'
 
+

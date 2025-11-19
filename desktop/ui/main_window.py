@@ -26,6 +26,7 @@ from desktop.ui.user.user_admin_dialog import UserAdminDialog
 from desktop.shortcuts.actions import QuickActionsManager, QuickAction
 from desktop.shortcuts.quick_actions_dialog import QuickActionsDialog
 from desktop.ui.dashboard.dashboard_widget import DashboardWidget
+from desktop.ui.monitoring.monitor_dialog import MonitorDialog
 
 class MainWindow(QMainWindow):
     def __init__(self, settings: Optional[Settings] = None, user_repository=None):
@@ -84,6 +85,10 @@ class MainWindow(QMainWindow):
         
         self.dashboard = DashboardWidget(self)
         layout.addWidget(self.dashboard)
+        self.dashboard.set_action_handler('history', 'Открыть историю', self.open_history)
+        self.dashboard.set_action_handler('backup', 'Создать бэкап', self.open_backup_dialog)
+        self.dashboard.set_action_handler('monitor', 'Мониторинг', self.open_resource_monitor)
+        self.dashboard.set_action_handler('settings', 'Настройки', self.open_settings)
 
         self.chat_widget = ChatWidget(self.neural_network, self)
         layout.addWidget(self.chat_widget)
@@ -143,6 +148,10 @@ class MainWindow(QMainWindow):
         backup_action.triggered.connect(self.open_backup_dialog)
         tools_menu.addAction(backup_action)
 
+        monitor_action = QAction('Мониторинг ресурсов', self)
+        monitor_action.triggered.connect(self.open_resource_monitor)
+        tools_menu.addAction(monitor_action)
+
         training_status_action = QAction('Статус обучения', self)
         training_status_action.triggered.connect(self.show_training_status)
         tools_menu.addAction(training_status_action)
@@ -174,6 +183,9 @@ class MainWindow(QMainWindow):
         quick_button = QPushButton('⚡ Действия')
         quick_button.clicked.connect(self.open_quick_actions)
         toolbar.addWidget(quick_button)
+        monitor_button = QPushButton('📊 Мониторинг')
+        monitor_button.clicked.connect(self.open_resource_monitor)
+        toolbar.addWidget(monitor_button)
         
     def create_status_bar(self):
         self.status_bar = QStatusBar()
@@ -267,6 +279,10 @@ class MainWindow(QMainWindow):
 
     def open_quick_actions(self):
         dialog = QuickActionsDialog(self.quick_actions, self)
+        dialog.exec_()
+
+    def open_resource_monitor(self):
+        dialog = MonitorDialog(self.resource_monitor, self)
         dialog.exec_()
 
     def verify_models(self):
@@ -390,6 +406,9 @@ class MainWindow(QMainWindow):
         )
         self.quick_actions.register(
             QuickAction('Открыть настройки', 'Открывает окно настроек приложения.', lambda _: self.open_settings())
+        )
+        self.quick_actions.register(
+            QuickAction('Мониторинг ресурсов', 'Показать окно подробного мониторинга системных ресурсов.', lambda _: self.open_resource_monitor())
         )
 
     def _get_training_status_payload(self):
