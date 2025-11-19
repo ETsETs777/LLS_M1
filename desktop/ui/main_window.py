@@ -18,6 +18,7 @@ from desktop.ui.plugins.plugin_dialog import PluginDialog
 from desktop.updater.update_manager import UpdateManager
 from desktop.backup.backup_manager import BackupManager
 from desktop.ui.backup.backup_dialog import BackupDialog
+from desktop.ui.user.user_admin_dialog import UserAdminDialog
 
 class MainWindow(QMainWindow):
     def __init__(self, settings: Optional[Settings] = None, user_repository=None):
@@ -41,7 +42,6 @@ class MainWindow(QMainWindow):
         self.current_user = None
         self.current_user_role = 'user'
         self._load_current_user()
-        self.plugin_manager = PluginManager(self.settings, self.current_user_role)
         self.vram_warning_threshold = 0.9
         self.vram_warning_shown = False
         self.monitor_timer = QTimer(self)
@@ -122,6 +122,11 @@ class MainWindow(QMainWindow):
         training_status_action = QAction('Статус обучения', self)
         training_status_action.triggered.connect(self.show_training_status)
         tools_menu.addAction(training_status_action)
+
+        self.user_admin_action = QAction('Управление пользователями', self)
+        self.user_admin_action.triggered.connect(self.open_user_admin)
+        tools_menu.addAction(self.user_admin_action)
+        self._update_role_dependent_actions()
         
     def create_toolbar(self):
         toolbar = self.addToolBar('Панель инструментов')
@@ -186,6 +191,8 @@ class MainWindow(QMainWindow):
         if dialog.exec_():
             self.neural_network.refresh_from_settings()
             self.apply_theme(self.settings.get_theme())
+            self._refresh_plugin_manager()
+            self._update_role_dependent_actions()
 
     def _load_current_user(self):
         user_id = self.settings.get_current_user_id()
@@ -199,6 +206,8 @@ class MainWindow(QMainWindow):
         else:
             self.current_user_role = 'user'
             self.status_panel.set_user('—', self.current_user_role)
+        self._refresh_plugin_manager()
+        self._update_role_dependent_actions()
 
     def open_history(self):
         dialog = HistoryDialog(self.history_manager, self)
@@ -207,6 +216,17 @@ class MainWindow(QMainWindow):
     def open_plugins(self):
         dialog = PluginDialog(self.plugin_manager, self)
         dialog.exec_()
+
+    def open_user_admin(self):
+        if not self.user_repository:
+            QMessageBox.warning(self, 'Недоступно', 'Репозиторий пользователей не инициализирован.')
+            return
+        if self.current_user_role != 'admin':
+            QMessageBox.warning(self, 'Недостаточно прав', 'Только администратор может управлять пользователями.')
+            return
+        dialog = UserAdminDialog(self.user_repository, self.current_user_role, self)
+        dialog.exec_()
+        self._load_current_user()
 
     def verify_models(self):
         result = self.update_manager.verify_models()
@@ -260,3 +280,7 @@ class MainWindow(QMainWindow):
 
     def _refresh_plugin_manager(self):
         self.plugin_manager = PluginManager(self.settings, self.current_user_role)
+
+    def _update_role_dependent_actions(self):
+        if hasattr(self, 'user_admin_action'):
+            self.user_admin_action.setVisible(self.current_user_role == 'admin')

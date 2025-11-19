@@ -55,4 +55,11 @@ class UserRepository:
         row = cursor.fetchone()
         return dict(row) if row else None
 
+    def update_role(self, user_id: int, role: str):
+        self.db.execute(
+            "UPDATE users SET role = ? WHERE id = ?",
+            (role, user_id),
+            commit=True
+        )
+
 
