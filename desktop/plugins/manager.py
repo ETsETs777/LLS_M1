@@ -6,8 +6,9 @@ from desktop.plugins.base import Plugin
 
 
 class PluginManager:
-    def __init__(self, settings: Settings):
+    def __init__(self, settings: Settings, user_role: str = 'user'):
         self.settings = settings
+        self.user_role = user_role or 'user'
         self.plugins: Dict[str, Plugin] = {}
         self._load_plugins()
 
@@ -22,6 +23,7 @@ class PluginManager:
             instance.id = plugin_id
             instance.name = meta.get('name', plugin_id)
             instance.description = meta.get('description', '')
+            instance.allowed_roles = meta.get('allowed_roles', [])
             if plugin_id in enabled:
                 instance.activate()
             self.plugins[plugin_id] = instance
@@ -56,5 +58,8 @@ class PluginManager:
         plugin = self.plugins.get(plugin_id)
         if not plugin or not plugin.enabled:
             return 'Плагин недоступен или отключен.'
+        if plugin.allowed_roles and self.user_role not in plugin.allowed_roles:
+            return 'У вас нет прав для использования этого плагина.'
         return plugin.execute(query)
+
 

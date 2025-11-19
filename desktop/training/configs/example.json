@@ -7,6 +7,7 @@
   ],
   "eval_dataset_path": "../../data/datasets/validation.jsonl",
   "report_dir": "../../data/reports",
+  "status_file": "../../data/reports/training_status.json",
   "max_steps": 500,
   "per_device_train_batch_size": 2,
   "gradient_accumulation_steps": 4,

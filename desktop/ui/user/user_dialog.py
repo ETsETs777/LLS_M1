@@ -45,6 +45,10 @@ class UserDialog(QDialog):
         self.org_edit = QLineEdit()
         self.org_edit.setPlaceholderText('Компания или команда')
         form_layout.addRow('Организация', self.org_edit)
+
+        self.role_combo = QComboBox()
+        self.role_combo.addItems(['user', 'analyst', 'admin'])
+        form_layout.addRow('Роль', self.role_combo)
         layout.addLayout(form_layout)
         buttons_layout = QHBoxLayout()
         buttons_layout.addStretch()
@@ -78,16 +82,20 @@ class UserDialog(QDialog):
                 self.full_name_edit.setText(user['full_name'])
                 self.email_edit.setText(user['email'])
                 self.org_edit.setText(user['organization'])
+                self.role_combo.setCurrentText(user.get('role', 'user'))
                 self.full_name_edit.setEnabled(False)
                 self.email_edit.setEnabled(False)
                 self.org_edit.setEnabled(False)
+                self.role_combo.setEnabled(False)
         else:
             self.full_name_edit.clear()
             self.email_edit.clear()
             self.org_edit.clear()
+            self.role_combo.setCurrentText('user')
             self.full_name_edit.setEnabled(True)
             self.email_edit.setEnabled(True)
             self.org_edit.setEnabled(True)
+            self.role_combo.setEnabled(True)
 
     def _save(self):
         user_id = self.user_select.currentData()
@@ -98,10 +106,12 @@ class UserDialog(QDialog):
         full_name = self.full_name_edit.text().strip()
         email = self.email_edit.text().strip()
         organization = self.org_edit.text().strip()
+        role = self.role_combo.currentText()
         if not full_name or not email or not organization:
             QMessageBox.warning(self, 'Ошибка', 'Заполните все поля')
             return
-        new_user_id = self.repository.add_user(full_name, email, organization)
+        new_user_id = self.repository.add_user(full_name, email, organization, role)
         self.settings.set_current_user_id(new_user_id)
         self.accept()
+
 

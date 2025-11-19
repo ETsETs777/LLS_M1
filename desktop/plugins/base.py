@@ -9,6 +9,7 @@ class Plugin:
     def __init__(self, config: Dict[str, Any] = None):
         self.config = config or {}
         self.enabled = False
+        self.allowed_roles: List[str] = []
 
     def activate(self):
         self.enabled = True
@@ -18,4 +19,5 @@ class Plugin:
 
     def execute(self, query: str) -> str:
         raise NotImplementedError
+
 

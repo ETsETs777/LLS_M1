@@ -49,7 +49,11 @@ class Settings:
             },
             'training': {
                 'reports_dir': os.path.join(data_dir, 'reports'),
-                'runs_dir': os.path.join(base_dir, 'training_runs')
+                'runs_dir': os.path.join(base_dir, 'training_runs'),
+                'status_file': os.path.join(data_dir, 'reports', 'training_status.json')
+            },
+            'backup': {
+                'dir': os.path.join(data_dir, 'backups')
             },
             'plugins': {
                 'enabled': [],
@@ -59,7 +63,8 @@ class Settings:
                         'class': 'WebSearchPlugin',
                         'name': 'Поиск в сети',
                         'description': 'Стартовый плагин для интеграции веб-поиска.',
-                        'config': {}
+                        'config': {},
+                        'allowed_roles': ['admin']
                     },
                     'knowledge_base': {
                         'module': 'desktop.plugins.examples.knowledge_base',
@@ -68,7 +73,8 @@ class Settings:
                         'description': 'Ответы на основе локальной коллекции статей.',
                         'config': {
                             'data_path': knowledge_path
-                        }
+                        },
+                        'allowed_roles': ['analyst', 'admin']
                     }
                 }
             },
@@ -165,6 +171,20 @@ class Settings:
         history = self.get_history_config()
         history.update(updates)
         self.config['history'] = history
+        self.save_config()
+
+    def get_backup_config(self) -> Dict[str, Any]:
+        defaults = self.default_config()['backup']
+        backup = self.config.get('backup', defaults)
+        defaults.update(backup)
+        self.config['backup'] = defaults
+        self.save_config()
+        return defaults
+
+    def update_backup_config(self, updates: Dict[str, Any]):
+        backup = self.get_backup_config()
+        backup.update(updates)
+        self.config['backup'] = backup
         self.save_config()
 
     def get_training_config(self) -> Dict[str, Any]:

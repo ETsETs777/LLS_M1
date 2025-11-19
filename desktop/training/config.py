@@ -23,6 +23,7 @@ class TrainingConfig:
     max_seq_length: int = 1024
     report_dir: Optional[str] = None
     evaluation_metric: str = 'perplexity'
+    status_file: Optional[str] = None
 
     @classmethod
     def from_dict(cls, values: Dict[str, Any]) -> "TrainingConfig":
@@ -46,5 +47,6 @@ class TrainingConfig:
             max_seq_length=values.get("max_seq_length", 1024),
             report_dir=values.get("report_dir"),
             evaluation_metric=values.get("evaluation_metric", 'perplexity'),
+            status_file=values.get("status_file"),
         )
 

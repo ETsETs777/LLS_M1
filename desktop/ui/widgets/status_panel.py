@@ -35,6 +35,9 @@ class StatusPanel(QWidget):
         else:
             self.gpu_label.setText('GPU: нет')
 
-    def set_user(self, name: str):
-        self.user_label.setText(f'Пользователь: {name}')
+    def set_user(self, name: str, role: str = 'user'):
+        if role:
+            self.user_label.setText(f'Пользователь: {name} ({role})')
+        else:
+            self.user_label.setText(f'Пользователь: {name}')
 

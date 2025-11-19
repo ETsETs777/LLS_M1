@@ -56,6 +56,10 @@ class SettingsDialog(QDialog):
         self.tabs.addTab(self.presets_tab, 'Пресеты')
         self._build_presets_tab()
 
+        self.data_tab = QWidget()
+        self.tabs.addTab(self.data_tab, 'Данные')
+        self._build_data_tab()
+
         buttons_layout = QHBoxLayout()
         buttons_layout.addStretch()
         self.save_button = QPushButton('Сохранить')
@@ -144,6 +148,30 @@ class SettingsDialog(QDialog):
         preset_buttons.addWidget(self.delete_preset_button)
         layout.addLayout(preset_buttons)
 
+    def _build_data_tab(self):
+        layout = QFormLayout()
+        self.data_tab.setLayout(layout)
+
+        self.retention_spin = QSpinBox()
+        self.retention_spin.setRange(1, 3650)
+        layout.addRow('Хранение истории (дней)', self.retention_spin)
+
+        self.export_dir_edit = QLineEdit()
+        export_button = QPushButton('Выбрать...')
+        export_button.clicked.connect(self._browse_export_dir)
+        export_layout = QHBoxLayout()
+        export_layout.addWidget(self.export_dir_edit)
+        export_layout.addWidget(export_button)
+        layout.addRow('Папка экспорта', export_layout)
+
+        self.backup_dir_edit = QLineEdit()
+        backup_button = QPushButton('Выбрать...')
+        backup_button.clicked.connect(self._browse_backup_dir)
+        backup_layout = QHBoxLayout()
+        backup_layout.addWidget(self.backup_dir_edit)
+        backup_layout.addWidget(backup_button)
+        layout.addRow('Папка бэкапов', backup_layout)
+
     def _load_data(self):
         self.model_path_edit.setText(self.settings.get_model_path())
         self.theme_combo.setCurrentText(self.settings.get_theme())
@@ -158,6 +186,11 @@ class SettingsDialog(QDialog):
         info = self.neural_network.get_model_info()
         info_text = f"Путь: {info.get('model_path')}\nУстройство: {info.get('device')}\nКонтекст: {info.get('context_length')}\nVocab: {info.get('vocab_size')}"
         self.info_label.setText(info_text)
+        history = self.settings.get_history_config()
+        self.retention_spin.setValue(history.get('retention_days', 90))
+        self.export_dir_edit.setText(history.get('export_dir', ''))
+        backup = self.settings.get_backup_config()
+        self.backup_dir_edit.setText(backup.get('dir', ''))
 
     def _browse_model_path(self):
         path = QFileDialog.getExistingDirectory(self, 'Выберите папку модели', self.model_path_edit.text())
@@ -218,5 +251,22 @@ class SettingsDialog(QDialog):
             'do_sample': self.sampling_combo.currentText() == 'True',
             'repetition_penalty': self.repetition_spin.value()
         })
+        self.settings.update_history_config({
+            'retention_days': self.retention_spin.value(),
+            'export_dir': self.export_dir_edit.text().strip()
+        })
+        self.settings.update_backup_config({
+            'dir': self.backup_dir_edit.text().strip()
+        })
         super().accept()
+
+    def _browse_export_dir(self):
+        path = QFileDialog.getExistingDirectory(self, 'Выберите папку экспорта', self.export_dir_edit.text())
+        if path:
+            self.export_dir_edit.setText(path)
+
+    def _browse_backup_dir(self):
+        path = QFileDialog.getExistingDirectory(self, 'Выберите папку бэкапов', self.backup_dir_edit.text())
+        if path:
+            self.backup_dir_edit.setText(path)
 

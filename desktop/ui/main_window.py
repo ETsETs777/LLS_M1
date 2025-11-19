@@ -28,7 +28,6 @@ class MainWindow(QMainWindow):
         self.user_repository = user_repository
         self.history_manager = HistoryManager(self.settings)
         self.history_manager.cleanup_old_records()
-        self.plugin_manager = PluginManager(self.settings)
         base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
         log_dir = os.path.join(base_dir, 'logs')
         os.makedirs(log_dir, exist_ok=True)
@@ -40,9 +39,9 @@ class MainWindow(QMainWindow):
         if updater_cfg.get('verify_models_on_start'):
             self.update_manager.verify_models()
         self.current_user = None
+        self.current_user_role = 'user'
         self._load_current_user()
-        if self.current_user:
-            self.status_panel.set_user(self.current_user.get('full_name', '—'))
+        self.plugin_manager = PluginManager(self.settings, self.current_user_role)
         self.vram_warning_threshold = 0.9
         self.vram_warning_shown = False
         self.monitor_timer = QTimer(self)
@@ -119,6 +118,10 @@ class MainWindow(QMainWindow):
         backup_action = QAction('Резервные копии', self)
         backup_action.triggered.connect(self.open_backup_dialog)
         tools_menu.addAction(backup_action)
+
+        training_status_action = QAction('Статус обучения', self)
+        training_status_action.triggered.connect(self.show_training_status)
+        tools_menu.addAction(training_status_action)
         
     def create_toolbar(self):
         toolbar = self.addToolBar('Панель инструментов')
@@ -143,7 +146,7 @@ class MainWindow(QMainWindow):
         self.status_bar.addPermanentWidget(self.status_panel)
         self.status_panel.reload_button.clicked.connect(self.refresh_metrics)
         if self.current_user:
-            self.status_panel.set_user(self.current_user.get('full_name', '—'))
+            self.status_panel.set_user(self.current_user.get('full_name', '—'), self.current_user_role)
         self.status_panel.model_reload_button.clicked.connect(self.reload_model)
         
     def toggle_theme(self):
@@ -191,9 +194,11 @@ class MainWindow(QMainWindow):
         else:
             self.current_user = None
         if self.current_user:
-            self.status_panel.set_user(self.current_user.get('full_name', '—'))
+            self.current_user_role = self.current_user.get('role', 'user')
+            self.status_panel.set_user(self.current_user.get('full_name', '—'), self.current_user_role)
         else:
-            self.status_panel.set_user('—')
+            self.current_user_role = 'user'
+            self.status_panel.set_user('—', self.current_user_role)
 
     def open_history(self):
         dialog = HistoryDialog(self.history_manager, self)
@@ -206,6 +211,18 @@ class MainWindow(QMainWindow):
     def verify_models(self):
         result = self.update_manager.verify_models()
         QMessageBox.information(self, 'Проверка модели', result['details'])
+
+    def show_training_status(self):
+        training_cfg = self.settings.get_training_config()
+        status_path = training_cfg.get('status_file')
+        if not status_path:
+            status_path = os.path.join(training_cfg.get('reports_dir'), 'training_status.json')
+        if not os.path.exists(status_path):
+            QMessageBox.information(self, 'Статус обучения', 'Нет данных об активных запусках.')
+            return
+        with open(status_path, 'r', encoding='utf-8') as f:
+            info = f.read().strip()
+        QMessageBox.information(self, 'Статус обучения', info or 'Файл статуса пуст.')
 
     def refresh_metrics(self):
         metrics = self.resource_monitor.collect()
@@ -240,3 +257,6 @@ class MainWindow(QMainWindow):
             self.vram_warning_shown = True
         elif ratio < self.vram_warning_threshold - 0.1:
             self.vram_warning_shown = False
+
+    def _refresh_plugin_manager(self):
+        self.plugin_manager = PluginManager(self.settings, self.current_user_role)

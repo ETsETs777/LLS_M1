@@ -54,7 +54,11 @@ class PluginDialog(QDialog):
     def _refresh_list(self):
         self.list_widget.clear()
         for plugin in self.manager.list_plugins():
-            text = f"{plugin.name} ({'Включен' if plugin.enabled else 'Выключен'})\n{plugin.description}"
+            status = 'Включен' if plugin.enabled else 'Выключен'
+            roles_hint = ''
+            if plugin.allowed_roles:
+                roles_hint = f"\nДоступно ролям: {', '.join(plugin.allowed_roles)}"
+            text = f"{plugin.name} ({status})\n{plugin.description}{roles_hint}"
             item = QListWidgetItem(text)
             item.setData(Qt.UserRole, plugin.id)
             self.list_widget.addItem(item)

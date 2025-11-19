@@ -11,7 +11,8 @@ class BackupManager:
     def __init__(self, settings: Settings):
         self.settings = settings
         self.base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-        self.backup_dir = os.path.join(self.base_dir, 'data', 'backups')
+        backup_cfg = self.settings.get_backup_config()
+        self.backup_dir = backup_cfg.get('dir') or os.path.join(self.base_dir, 'data', 'backups')
         os.makedirs(self.backup_dir, exist_ok=True)
         self.history_file = os.path.join(self.base_dir, 'data', 'chat_history.json')
 

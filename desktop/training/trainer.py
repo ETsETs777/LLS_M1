@@ -1,3 +1,4 @@
+import os
 from typing import Dict, Any, Tuple
 
 from peft import LoraConfig, get_peft_model
@@ -9,6 +10,7 @@ from desktop.training.utils import seed_everything
 from desktop.training.reports.report_builder import ReportBuilder
 from desktop.training.reports.plotter import ReportPlotter
 from desktop.training.evaluation import EvaluationRunner
+from desktop.training.status import TrainingStatusWriter
 
 
 class FineTuningTrainer:
@@ -30,6 +32,9 @@ class FineTuningTrainer:
             dataset_path=self.config.dataset_path,
             dataset_paths=self.config.dataset_paths
         )
+        self.report_dir = self.config.report_dir or self.config.output_dir
+        status_file = self.config.status_file or os.path.join(self.report_dir, 'training_status.json')
+        self.status_writer = TrainingStatusWriter(status_file)
 
     def build_training_arguments(self) -> TrainingArguments:
         return TrainingArguments(
@@ -96,25 +101,30 @@ class FineTuningTrainer:
             eval_dataset=eval_dataset,
             data_collator=data_collator,
         )
-        trainer.train()
+        self.status_writer.update('running', message='Обучение запущено')
         metrics = {}
-        if eval_dataset:
-            evaluator = EvaluationRunner(trainer, self.config.evaluation_metric)
-            metrics = evaluator.run()
-        trainer.save_model(self.config.output_dir)
-        self.tokenizer.save_pretrained(self.config.output_dir)
-        report_dir = self.config.report_dir or self.config.output_dir
-        builder = ReportBuilder(report_dir)
-        report_meta = builder.save(metrics, {
-            'max_steps': self.config.max_steps,
-            'learning_rate': self.config.learning_rate,
-            'dataset_paths': self.config.dataset_paths or [self.config.dataset_path],
-            'eval_dataset_path': self.config.eval_dataset_path
-        })
-        history = self._collect_history(trainer.state.log_history)
-        if history:
-            plotter = ReportPlotter(report_dir)
-            plot_name = f"metrics-{report_meta['timestamp']}.png"
-            plot_path = plotter.plot_metrics(history, plot_name)
-            report_meta['plot'] = plot_path
+        try:
+            trainer.train()
+            if eval_dataset:
+                evaluator = EvaluationRunner(trainer, self.config.evaluation_metric)
+                metrics = evaluator.run()
+            trainer.save_model(self.config.output_dir)
+            self.tokenizer.save_pretrained(self.config.output_dir)
+            builder = ReportBuilder(self.report_dir)
+            report_meta = builder.save(metrics, {
+                'max_steps': self.config.max_steps,
+                'learning_rate': self.config.learning_rate,
+                'dataset_paths': self.config.dataset_paths or [self.config.dataset_path],
+                'eval_dataset_path': self.config.eval_dataset_path
+            })
+            history = self._collect_history(trainer.state.log_history)
+            if history:
+                plotter = ReportPlotter(self.report_dir)
+                plot_name = f"metrics-{report_meta['timestamp']}.png"
+                plot_path = plotter.plot_metrics(history, plot_name)
+                report_meta['plot'] = plot_path
+            self.status_writer.update('completed', metrics=metrics, report=report_meta.get('json'))
+        except Exception as exc:
+            self.status_writer.update('failed', error=str(exc))
+            raise
 
