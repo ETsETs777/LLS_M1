@@ -35,43 +35,160 @@ class ChatWidget(QWidget):
         self.load_history()
         
     def init_ui(self):
-        layout = QVBoxLayout()
-        layout.setContentsMargins(10, 10, 10, 10)
-        layout.setSpacing(10)
-        self.setLayout(layout)
+        main_layout = QVBoxLayout()
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
+        self.setLayout(main_layout)
         
+        # Центральный контейнер для чата и ввода
+        center_container = QWidget()
+        center_layout = QVBoxLayout()
+        center_layout.setContentsMargins(50, 20, 50, 20)
+        center_layout.setSpacing(15)
+        center_container.setLayout(center_layout)
+        
+        # Добавляем растяжку сверху для центрирования
+        main_layout.addStretch()
+        
+        # Область чата без рамок
         self.chat_display = QTextEdit()
         self.chat_display.setReadOnly(True)
         self.chat_display.setPlaceholderText('Начните диалог с нейросетью...')
         self.chat_display.setAcceptRichText(True)
-        layout.addWidget(self.chat_display)
+        self.chat_display.setFrameShape(QTextEdit.NoFrame)
+        center_layout.addWidget(self.chat_display)
         
-        input_container = QWidget()
-        input_layout = QVBoxLayout()
-        input_container.setLayout(input_layout)
+        # Поле ввода без рамок
+        self.input_field = QLineEdit()
+        self.input_field.setPlaceholderText('Введите ваш вопрос...')
+        self.input_field.returnPressed.connect(self.send_message)
+        self.input_field.setFrame(False)
+        center_layout.addWidget(self.input_field)
+        
+        # Контейнер для кнопок
+        buttons_container = QWidget()
+        buttons_layout = QHBoxLayout()
+        buttons_layout.setContentsMargins(0, 0, 0, 0)
+        buttons_layout.setSpacing(8)
+        buttons_layout.addStretch()
+        buttons_container.setLayout(buttons_layout)
         
         self.loading_label = QLabel('')
         self.loading_label.setAlignment(Qt.AlignCenter)
         self.loading_label.setVisible(False)
-        input_layout.addWidget(self.loading_label)
+        buttons_layout.addWidget(self.loading_label)
         
-        input_row = QHBoxLayout()
-        self.input_field = QLineEdit()
-        self.input_field.setPlaceholderText('Введите ваш вопрос...')
-        self.input_field.returnPressed.connect(self.send_message)
-        input_row.addWidget(self.input_field)
-
-        self.tag_field = QLineEdit()
-        self.tag_field.setPlaceholderText('Теги (через запятую)')
-        input_row.addWidget(self.tag_field)
-        
+        # Маленькие красивые кнопки
         self.send_button = QPushButton('Отправить')
         self.send_button.clicked.connect(self.send_message)
-        self.send_button.setMinimumWidth(100)
-        input_row.addWidget(self.send_button)
+        self.send_button.setFixedHeight(32)
+        self.send_button.setFixedWidth(100)
+        buttons_layout.addWidget(self.send_button)
         
-        input_layout.addLayout(input_row)
-        layout.addWidget(input_container)
+        self.tag_button = QPushButton('Теги')
+        self.tag_button.setFixedHeight(32)
+        self.tag_button.setFixedWidth(70)
+        self.tag_button.setCheckable(True)
+        buttons_layout.addWidget(self.tag_button)
+        
+        buttons_layout.addStretch()
+        
+        center_layout.addWidget(buttons_container)
+        
+        # Скрытое поле для тегов
+        self.tag_field = QLineEdit()
+        self.tag_field.setPlaceholderText('Теги (через запятую)')
+        self.tag_field.setFrame(False)
+        self.tag_field.setVisible(False)
+        center_layout.addWidget(self.tag_field)
+        
+        # Подключаем переключение видимости поля тегов
+        self.tag_button.toggled.connect(self.tag_field.setVisible)
+        
+        main_layout.addWidget(center_container)
+        main_layout.addStretch()
+        
+        # Применяем стили по умолчанию
+        self._apply_default_styles()
+        
+    def _apply_default_styles(self):
+        """Применяет стили по умолчанию (светлая тема)"""
+        self.chat_display.setStyleSheet("""
+            QTextEdit {
+                background-color: transparent;
+                color: #000000;
+                border: none;
+                padding: 10px;
+            }
+        """)
+        self.input_field.setStyleSheet("""
+            QLineEdit {
+                background-color: rgba(0, 0, 0, 0.05);
+                color: #000000;
+                border: none;
+                border-bottom: 2px solid #0078d4;
+                padding: 8px;
+                font-size: 14px;
+            }
+            QLineEdit:focus {
+                border-bottom: 2px solid #0078d4;
+                background-color: rgba(0, 0, 0, 0.08);
+            }
+        """)
+        self.tag_field.setStyleSheet("""
+            QLineEdit {
+                background-color: rgba(0, 0, 0, 0.05);
+                color: #000000;
+                border: none;
+                border-bottom: 2px solid #0078d4;
+                padding: 8px;
+                font-size: 14px;
+            }
+            QLineEdit:focus {
+                border-bottom: 2px solid #0078d4;
+                background-color: rgba(0, 0, 0, 0.08);
+            }
+        """)
+        self.send_button.setStyleSheet("""
+            QPushButton {
+                background-color: #0078d4;
+                color: white;
+                border: none;
+                border-radius: 16px;
+                padding: 6px 16px;
+                font-size: 13px;
+                font-weight: 500;
+            }
+            QPushButton:hover {
+                background-color: #106ebe;
+            }
+            QPushButton:pressed {
+                background-color: #005a9e;
+            }
+            QPushButton:disabled {
+                background-color: #ccc;
+                color: #666;
+            }
+        """)
+        self.tag_button.setStyleSheet("""
+            QPushButton {
+                background-color: rgba(0, 0, 0, 0.05);
+                color: #000000;
+                border: 1px solid rgba(0, 0, 0, 0.2);
+                border-radius: 16px;
+                padding: 6px 12px;
+                font-size: 13px;
+            }
+            QPushButton:hover {
+                background-color: rgba(0, 0, 0, 0.1);
+            }
+            QPushButton:checked {
+                background-color: #0078d4;
+                color: white;
+                border: 1px solid #0078d4;
+            }
+        """)
+        self.loading_label.setStyleSheet("color: #000000;")
         
     def send_message(self):
         user_message = self.input_field.text().strip()
@@ -115,21 +232,21 @@ class ChatWidget(QWidget):
     def add_user_message(self, message):
         timestamp = datetime.datetime.now().strftime('%H:%M')
         tags_html = self._format_tags(self.pending_tags)
-        formatted = f'<div style="margin: 10px 0;"><b style="color: #0078d4;">Вы</b> <span style="color: #666; font-size: 0.9em;">({timestamp})</span>{tags_html}<br><div style="background-color: #e3f2fd; padding: 10px; border-radius: 8px; margin-top: 5px;">{self.escape_html(message)}</div></div>'
+        formatted = f'<div style="margin: 15px 0; padding: 0;"><b style="color: #0078d4; font-size: 14px;">Вы</b> <span style="color: #999; font-size: 12px;">({timestamp})</span>{tags_html}<br><div style="padding: 8px 0; margin-top: 5px; color: #333; line-height: 1.6;">{self.escape_html(message)}</div></div>'
         self.chat_display.append(formatted)
         self.scroll_to_bottom()
         
     def add_bot_message(self, message, tags=None):
         timestamp = datetime.datetime.now().strftime('%H:%M')
         tags_html = self._format_tags(tags)
-        formatted = f'<div style="margin: 10px 0;"><b style="color: #28a745;">Нейросеть</b> <span style="color: #666; font-size: 0.9em;">({timestamp})</span>{tags_html}<br><div style="background-color: #f5f5f5; padding: 10px; border-radius: 8px; margin-top: 5px;">{self.escape_html(message)}</div></div>'
+        formatted = f'<div style="margin: 15px 0; padding: 0;"><b style="color: #28a745; font-size: 14px;">Нейросеть</b> <span style="color: #999; font-size: 12px;">({timestamp})</span>{tags_html}<br><div style="padding: 8px 0; margin-top: 5px; color: #333; line-height: 1.6;">{self.escape_html(message)}</div></div>'
         self.chat_display.append(formatted)
         self.scroll_to_bottom()
         
     def add_error_message(self, error_msg, tags=None):
         timestamp = datetime.datetime.now().strftime('%H:%M')
         tags_html = self._format_tags(tags)
-        formatted = f'<div style="margin: 10px 0;"><b style="color: #dc3545;">Ошибка</b> <span style="color: #666; font-size: 0.9em;">({timestamp})</span>{tags_html}<br><div style="background-color: #ffebee; padding: 10px; border-radius: 8px; margin-top: 5px; color: #c62828;">{self.escape_html(error_msg)}</div></div>'
+        formatted = f'<div style="margin: 15px 0; padding: 0;"><b style="color: #dc3545; font-size: 14px;">Ошибка</b> <span style="color: #999; font-size: 12px;">({timestamp})</span>{tags_html}<br><div style="padding: 8px 0; margin-top: 5px; color: #c62828; line-height: 1.6;">{self.escape_html(error_msg)}</div></div>'
         self.chat_display.append(formatted)
         self.scroll_to_bottom()
         
@@ -174,22 +291,152 @@ class ChatWidget(QWidget):
         if theme == 'dark':
             self.chat_display.setStyleSheet("""
                 QTextEdit {
-                    background-color: #2d2d2d;
+                    background-color: transparent;
                     color: #ffffff;
-                    border: 1px solid #3d3d3d;
-                    border-radius: 5px;
+                    border: none;
                     padding: 10px;
+                }
+            """)
+            self.input_field.setStyleSheet("""
+                QLineEdit {
+                    background-color: rgba(255, 255, 255, 0.1);
+                    color: #ffffff;
+                    border: none;
+                    border-bottom: 2px solid #0078d4;
+                    padding: 8px;
+                    font-size: 14px;
+                }
+                QLineEdit:focus {
+                    border-bottom: 2px solid #0078d4;
+                    background-color: rgba(255, 255, 255, 0.15);
+                }
+            """)
+            self.tag_field.setStyleSheet("""
+                QLineEdit {
+                    background-color: rgba(255, 255, 255, 0.1);
+                    color: #ffffff;
+                    border: none;
+                    border-bottom: 2px solid #0078d4;
+                    padding: 8px;
+                    font-size: 14px;
+                }
+                QLineEdit:focus {
+                    border-bottom: 2px solid #0078d4;
+                    background-color: rgba(255, 255, 255, 0.15);
+                }
+            """)
+            self.send_button.setStyleSheet("""
+                QPushButton {
+                    background-color: #0078d4;
+                    color: white;
+                    border: none;
+                    border-radius: 16px;
+                    padding: 6px 16px;
+                    font-size: 13px;
+                    font-weight: 500;
+                }
+                QPushButton:hover {
+                    background-color: #106ebe;
+                }
+                QPushButton:pressed {
+                    background-color: #005a9e;
+                }
+                QPushButton:disabled {
+                    background-color: #666;
+                }
+            """)
+            self.tag_button.setStyleSheet("""
+                QPushButton {
+                    background-color: rgba(255, 255, 255, 0.1);
+                    color: white;
+                    border: 1px solid rgba(255, 255, 255, 0.2);
+                    border-radius: 16px;
+                    padding: 6px 12px;
+                    font-size: 13px;
+                }
+                QPushButton:hover {
+                    background-color: rgba(255, 255, 255, 0.2);
+                }
+                QPushButton:checked {
+                    background-color: #0078d4;
+                    border: 1px solid #0078d4;
                 }
             """)
             self.loading_label.setStyleSheet("color: #ffffff;")
         else:
             self.chat_display.setStyleSheet("""
                 QTextEdit {
-                    background-color: #f5f5f5;
+                    background-color: transparent;
                     color: #000000;
-                    border: 1px solid #d0d0d0;
-                    border-radius: 5px;
+                    border: none;
                     padding: 10px;
+                }
+            """)
+            self.input_field.setStyleSheet("""
+                QLineEdit {
+                    background-color: rgba(0, 0, 0, 0.05);
+                    color: #000000;
+                    border: none;
+                    border-bottom: 2px solid #0078d4;
+                    padding: 8px;
+                    font-size: 14px;
+                }
+                QLineEdit:focus {
+                    border-bottom: 2px solid #0078d4;
+                    background-color: rgba(0, 0, 0, 0.08);
+                }
+            """)
+            self.tag_field.setStyleSheet("""
+                QLineEdit {
+                    background-color: rgba(0, 0, 0, 0.05);
+                    color: #000000;
+                    border: none;
+                    border-bottom: 2px solid #0078d4;
+                    padding: 8px;
+                    font-size: 14px;
+                }
+                QLineEdit:focus {
+                    border-bottom: 2px solid #0078d4;
+                    background-color: rgba(0, 0, 0, 0.08);
+                }
+            """)
+            self.send_button.setStyleSheet("""
+                QPushButton {
+                    background-color: #0078d4;
+                    color: white;
+                    border: none;
+                    border-radius: 16px;
+                    padding: 6px 16px;
+                    font-size: 13px;
+                    font-weight: 500;
+                }
+                QPushButton:hover {
+                    background-color: #106ebe;
+                }
+                QPushButton:pressed {
+                    background-color: #005a9e;
+                }
+                QPushButton:disabled {
+                    background-color: #ccc;
+                    color: #666;
+                }
+            """)
+            self.tag_button.setStyleSheet("""
+                QPushButton {
+                    background-color: rgba(0, 0, 0, 0.05);
+                    color: #000000;
+                    border: 1px solid rgba(0, 0, 0, 0.2);
+                    border-radius: 16px;
+                    padding: 6px 12px;
+                    font-size: 13px;
+                }
+                QPushButton:hover {
+                    background-color: rgba(0, 0, 0, 0.1);
+                }
+                QPushButton:checked {
+                    background-color: #0078d4;
+                    color: white;
+                    border: 1px solid #0078d4;
                 }
             """)
             self.loading_label.setStyleSheet("color: #000000;")

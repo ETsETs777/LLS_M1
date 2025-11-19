@@ -4,7 +4,13 @@ from pathlib import Path
 from typing import Dict, Any
 
 import psutil
-import torch
+
+try:
+    import torch
+    TORCH_AVAILABLE = True
+except (ImportError, OSError):
+    TORCH_AVAILABLE = False
+    torch = None
 
 
 class ResourceMonitor:
@@ -18,16 +24,20 @@ class ResourceMonitor:
             'memory_percent': psutil.virtual_memory().percent,
             'timestamp': time.time()
         }
-        if torch.cuda.is_available():
-            gpu_index = torch.cuda.current_device()
-            total_mem = torch.cuda.get_device_properties(gpu_index).total / (1024 ** 3)
-            free_mem, total = torch.cuda.mem_get_info()
-            used_mem = (total - free_mem) / (1024 ** 3)
-            metrics.update({
-                'gpu_name': torch.cuda.get_device_name(gpu_index),
-                'gpu_memory_total': round(total_mem, 2),
-                'gpu_memory_used': round(used_mem, 2)
-            })
+        if TORCH_AVAILABLE and torch is not None and torch.cuda.is_available():
+            try:
+                gpu_index = torch.cuda.current_device()
+                total_mem = torch.cuda.get_device_properties(gpu_index).total / (1024 ** 3)
+                free_mem, total = torch.cuda.mem_get_info()
+                used_mem = (total - free_mem) / (1024 ** 3)
+                metrics.update({
+                    'gpu_name': torch.cuda.get_device_name(gpu_index),
+                    'gpu_memory_total': round(total_mem, 2),
+                    'gpu_memory_used': round(used_mem, 2)
+                })
+            except Exception:
+                # Если возникла ошибка при работе с CUDA, просто пропускаем GPU метрики
+                pass
         self._log(metrics)
         return metrics
 

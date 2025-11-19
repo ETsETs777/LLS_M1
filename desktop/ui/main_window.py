@@ -4,8 +4,8 @@ from collections import Counter
 from datetime import datetime, date
 from typing import Optional, Dict, List
 
-from PyQt5.QtCore import QTimer
-from PyQt5.QtWidgets import QMainWindow, QVBoxLayout, QWidget, QPushButton, QAction, QStatusBar, QMessageBox, QLabel
+from PyQt5.QtCore import QTimer, Qt
+from PyQt5.QtWidgets import QMainWindow, QVBoxLayout, QWidget, QPushButton, QAction, QStatusBar, QMessageBox, QLabel, QHBoxLayout
 
 from desktop.ui.chat_widget import ChatWidget
 from desktop.ui.theme_manager import ThemeManager
@@ -72,10 +72,6 @@ class MainWindow(QMainWindow):
         self.setWindowTitle('Нейросеть Чат')
         self.setMinimumSize(800, 600)
         
-        self.create_menu_bar()
-        self.create_toolbar()
-        self.create_status_bar()
-        
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         
@@ -88,10 +84,23 @@ class MainWindow(QMainWindow):
         self.dashboard.set_action_handler('history', 'Открыть историю', self.open_history)
         self.dashboard.set_action_handler('backup', 'Создать бэкап', self.open_backup_dialog)
         self.dashboard.set_action_handler('monitor', 'Мониторинг', self.open_resource_monitor)
-        self.dashboard.set_action_handler('settings', 'Настройки', self.open_settings)
+        # Убираем кнопку настроек из dashboard
 
         self.chat_widget = ChatWidget(self.neural_network, self)
         layout.addWidget(self.chat_widget)
+        
+        # Создаем панель кнопок внизу
+        self.bottom_buttons_panel = QWidget()
+        bottom_layout = QHBoxLayout()
+        bottom_layout.setContentsMargins(10, 5, 10, 5)
+        bottom_layout.setSpacing(8)
+        self.bottom_buttons_panel.setLayout(bottom_layout)
+        layout.addWidget(self.bottom_buttons_panel)
+        
+        self.create_menu_bar()
+        self.create_top_settings_button()
+        self.create_bottom_buttons()
+        self.create_status_bar()
         self._setup_quick_actions()
         
     def create_menu_bar(self):
@@ -164,28 +173,94 @@ class MainWindow(QMainWindow):
         tools_menu.addAction(quick_actions_action)
         self._update_role_dependent_actions()
         
-    def create_toolbar(self):
-        toolbar = self.addToolBar('Панель инструментов')
+    def create_top_settings_button(self):
+        """Создает кнопку настроек в правом верхнем углу"""
+        settings_widget = QWidget()
+        settings_layout = QHBoxLayout()
+        settings_layout.setContentsMargins(0, 0, 10, 0)
+        settings_layout.addStretch()
+        self.settings_button = QPushButton('⚙️ Настройки')
+        self.settings_button.clicked.connect(self.open_settings)
+        self.settings_button.setFixedHeight(32)
+        self.settings_button.setStyleSheet("""
+            QPushButton {
+                background-color: #0078d4;
+                color: white;
+                border: none;
+                border-radius: 16px;
+                padding: 6px 16px;
+                font-size: 13px;
+                font-weight: 500;
+            }
+            QPushButton:hover {
+                background-color: #106ebe;
+            }
+            QPushButton:pressed {
+                background-color: #005a9e;
+            }
+        """)
+        settings_layout.addWidget(self.settings_button)
+        settings_widget.setLayout(settings_layout)
+        # Добавляем в menuBar как виджет справа
+        self.menuBar().setCornerWidget(settings_widget, Qt.TopRightCorner)
+        
+    def create_bottom_buttons(self):
+        """Создает панель кнопок внизу"""
+        bottom_layout = self.bottom_buttons_panel.layout()
         
         self.theme_button = QPushButton('🌙 Темная тема')
         self.theme_button.clicked.connect(self.toggle_theme)
-        toolbar.addWidget(self.theme_button)
-        
-        toolbar.addSeparator()
+        self.theme_button.setFixedHeight(32)
+        bottom_layout.addWidget(self.theme_button)
         
         clear_button = QPushButton('🗑 Очистить')
         clear_button.clicked.connect(self.chat_widget.clear_chat)
-        toolbar.addWidget(clear_button)
+        clear_button.setFixedHeight(32)
+        bottom_layout.addWidget(clear_button)
 
         history_button = QPushButton('📚 История')
         history_button.clicked.connect(self.open_history)
-        toolbar.addWidget(history_button)
+        history_button.setFixedHeight(32)
+        bottom_layout.addWidget(history_button)
+        
         quick_button = QPushButton('⚡ Действия')
         quick_button.clicked.connect(self.open_quick_actions)
-        toolbar.addWidget(quick_button)
+        quick_button.setFixedHeight(32)
+        bottom_layout.addWidget(quick_button)
+        
         monitor_button = QPushButton('📊 Мониторинг')
         monitor_button.clicked.connect(self.open_resource_monitor)
-        toolbar.addWidget(monitor_button)
+        monitor_button.setFixedHeight(32)
+        bottom_layout.addWidget(monitor_button)
+        
+        backup_button = QPushButton('💾 Бэкап')
+        backup_button.clicked.connect(self.open_backup_dialog)
+        backup_button.setFixedHeight(32)
+        bottom_layout.addWidget(backup_button)
+        
+        bottom_layout.addStretch()
+        
+        # Применяем стили к кнопкам
+        button_style = """
+            QPushButton {
+                background-color: rgba(0, 0, 0, 0.05);
+                color: #000000;
+                border: 1px solid rgba(0, 0, 0, 0.2);
+                border-radius: 16px;
+                padding: 6px 12px;
+                font-size: 13px;
+            }
+            QPushButton:hover {
+                background-color: rgba(0, 0, 0, 0.1);
+            }
+            QPushButton:pressed {
+                background-color: rgba(0, 0, 0, 0.15);
+            }
+        """
+        for i in range(bottom_layout.count()):
+            widget = bottom_layout.itemAt(i).widget()
+            if isinstance(widget, QPushButton):
+                widget.setStyleSheet(button_style)
         
     def create_status_bar(self):
         self.status_bar = QStatusBar()

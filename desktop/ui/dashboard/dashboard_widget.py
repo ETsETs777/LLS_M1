@@ -54,8 +54,7 @@ class DashboardWidget(QWidget):
         for key, label in (
             ('history', 'Открыть историю'),
             ('backup', 'Создать бэкап'),
-            ('monitor', 'Мониторинг'),
-            ('settings', 'Настройки')
+            ('monitor', 'Мониторинг')
         ):
             btn = QPushButton(label)
             btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
