@@ -1,0 +1,23 @@
+from typing import List, Dict
+
+
+class PaletteManager:
+    def __init__(self):
+        self._options = [
+            {'name': 'Azure', 'value': '#0078d4'},
+            {'name': 'Emerald', 'value': '#00a86b'},
+            {'name': 'Sunrise', 'value': '#f18f01'},
+            {'name': 'Ruby', 'value': '#c62828'},
+            {'name': 'Lavender', 'value': '#8e24aa'},
+            {'name': 'Slate', 'value': '#546e7a'}
+        ]
+
+    def options(self) -> List[Dict[str, str]]:
+        return self._options
+
+    def find_name(self, value: str) -> str:
+        for option in self._options:
+            if option['value'].lower() == (value or '').lower():
+                return option['name']
+        return 'Custom'
+

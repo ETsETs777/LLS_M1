@@ -52,6 +52,9 @@ class Settings:
                 'runs_dir': os.path.join(base_dir, 'training_runs'),
                 'status_file': os.path.join(data_dir, 'reports', 'training_status.json')
             },
+            'appearance': {
+                'accent_color': '#0078d4'
+            },
             'backup': {
                 'dir': os.path.join(data_dir, 'backups')
             },
@@ -194,6 +197,24 @@ class Settings:
         self.config['training'] = defaults
         self.save_config()
         return defaults
+
+    def get_appearance(self) -> Dict[str, Any]:
+        defaults = self.default_config()['appearance']
+        appearance = self.config.get('appearance', defaults)
+        defaults.update(appearance)
+        self.config['appearance'] = defaults
+        self.save_config()
+        return defaults
+
+    def update_appearance(self, updates: Dict[str, Any]):
+        appearance = self.get_appearance()
+        appearance.update(updates)
+        self.config['appearance'] = appearance
+        self.save_config()
+
+    def get_accent_color(self) -> str:
+        appearance = self.get_appearance()
+        return appearance.get('accent_color', '#0078d4')
 
     def get_plugin_config(self) -> Dict[str, Any]:
         return self.config.get('plugins', self.default_config()['plugins'])

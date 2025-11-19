@@ -9,12 +9,16 @@ class ChatHistory:
         base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
         self.history_dir = os.path.join(base_dir, 'data')
         self.history_file = os.path.join(self.history_dir, 'chat_history.json')
+        self.archive_dir = os.path.join(self.history_dir, 'archives')
+        self.max_records = 500
         self.ensure_data_dir()
         self.session_id = datetime.now().strftime('%Y%m%d-%H%M%S')
         
     def ensure_data_dir(self):
         if not os.path.exists(self.history_dir):
             os.makedirs(self.history_dir)
+        if not os.path.exists(self.archive_dir):
+            os.makedirs(self.archive_dir)
             
     def _load_all(self) -> List[Dict]:
         if not os.path.exists(self.history_file):
@@ -36,6 +40,10 @@ class ChatHistory:
             'tags': tags or [],
             'timestamp': datetime.now().isoformat()
         })
+        if len(history) > self.max_records:
+            overflow = history[:-self.max_records]
+            history = history[-self.max_records:]
+            self._archive_messages(overflow)
         self._save_all(history)
             
     def load_history(self, limit: Optional[int] = 50) -> List[Dict]:
@@ -67,4 +75,20 @@ class ChatHistory:
     def clear_history(self):
         if os.path.exists(self.history_file):
             os.remove(self.history_file)
+        if os.path.exists(self.archive_dir):
+            for name in os.listdir(self.archive_dir):
+                os.remove(os.path.join(self.archive_dir, name))
+
+    def list_archives(self) -> List[str]:
+        if not os.path.exists(self.archive_dir):
+            return []
+        return sorted(os.listdir(self.archive_dir))
+
+    def _archive_messages(self, messages: List[Dict]):
+        if not messages:
+            return
+        timestamp = datetime.now().strftime('%Y%m%d-%H%M%S')
+        archive_path = os.path.join(self.archive_dir, f'chat-{timestamp}.json')
+        with open(archive_path, 'w', encoding='utf-8') as f:
+            json.dump(messages, f, ensure_ascii=False, indent=2)
 

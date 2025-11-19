@@ -1,3 +1,4 @@
+import json
 import os
 from typing import Optional
 
@@ -19,12 +20,15 @@ from desktop.updater.update_manager import UpdateManager
 from desktop.backup.backup_manager import BackupManager
 from desktop.ui.backup.backup_dialog import BackupDialog
 from desktop.ui.user.user_admin_dialog import UserAdminDialog
+from desktop.shortcuts.actions import QuickActionsManager, QuickAction
+from desktop.shortcuts.quick_actions_dialog import QuickActionsDialog
 
 class MainWindow(QMainWindow):
     def __init__(self, settings: Optional[Settings] = None, user_repository=None):
         super().__init__()
         self.settings = settings or Settings()
         self.theme_manager = ThemeManager()
+        self.theme_manager.set_accent_color(self.settings.get_accent_color())
         self.neural_network = NeuralNetwork(settings=self.settings)
         self.user_repository = user_repository
         self.history_manager = HistoryManager(self.settings)
@@ -37,6 +41,7 @@ class MainWindow(QMainWindow):
         self.update_manager = UpdateManager(self.settings)
         self.backup_manager = BackupManager(self.settings)
         self.training_status_label = QLabel('Обучение: нет данных')
+        self.quick_actions = QuickActionsManager()
         updater_cfg = self.settings.get_updater_config()
         if updater_cfg.get('verify_models_on_start'):
             self.update_manager.verify_models()
@@ -73,6 +78,7 @@ class MainWindow(QMainWindow):
         
         self.chat_widget = ChatWidget(self.neural_network, self)
         layout.addWidget(self.chat_widget)
+        self._setup_quick_actions()
         
     def create_menu_bar(self):
         menubar = self.menuBar()
@@ -131,6 +137,9 @@ class MainWindow(QMainWindow):
         self.user_admin_action = QAction('Управление пользователями', self)
         self.user_admin_action.triggered.connect(self.open_user_admin)
         tools_menu.addAction(self.user_admin_action)
+        quick_actions_action = QAction('Быстрые действия', self)
+        quick_actions_action.triggered.connect(self.open_quick_actions)
+        tools_menu.addAction(quick_actions_action)
         self._update_role_dependent_actions()
         
     def create_toolbar(self):
@@ -149,6 +158,9 @@ class MainWindow(QMainWindow):
         history_button = QPushButton('📚 История')
         history_button.clicked.connect(self.open_history)
         toolbar.addWidget(history_button)
+        quick_button = QPushButton('⚡ Действия')
+        quick_button.clicked.connect(self.open_quick_actions)
+        toolbar.addWidget(quick_button)
         
     def create_status_bar(self):
         self.status_bar = QStatusBar()
@@ -172,6 +184,7 @@ class MainWindow(QMainWindow):
         self.theme_button.setText('☀️ Светлая тема' if theme == 'dark' else '🌙 Темная тема')
         
     def apply_theme(self, theme):
+        self.theme_manager.set_accent_color(self.settings.get_accent_color())
         stylesheet = self.theme_manager.get_stylesheet(theme)
         self.setStyleSheet(stylesheet)
         self.chat_widget.apply_theme(theme, stylesheet)
@@ -196,6 +209,7 @@ class MainWindow(QMainWindow):
         dialog = SettingsDialog(self.settings, self.neural_network, self)
         if dialog.exec_():
             self.neural_network.refresh_from_settings()
+            self.theme_manager.set_accent_color(self.settings.get_accent_color())
             self.apply_theme(self.settings.get_theme())
             self._refresh_plugin_manager()
             self._update_role_dependent_actions()
@@ -234,21 +248,38 @@ class MainWindow(QMainWindow):
         dialog.exec_()
         self._load_current_user()
 
+    def open_quick_actions(self):
+        dialog = QuickActionsDialog(self.quick_actions, self)
+        dialog.exec_()
+
     def verify_models(self):
         result = self.update_manager.verify_models()
         QMessageBox.information(self, 'Проверка модели', result['details'])
 
     def show_training_status(self):
-        training_cfg = self.settings.get_training_config()
-        status_path = training_cfg.get('status_file')
+        status_path, raw, payload = self._get_training_status_payload()
         if not status_path:
-            status_path = os.path.join(training_cfg.get('reports_dir'), 'training_status.json')
-        if not os.path.exists(status_path):
             QMessageBox.information(self, 'Статус обучения', 'Нет данных об активных запусках.')
             return
-        with open(status_path, 'r', encoding='utf-8') as f:
-            info = f.read().strip()
-        QMessageBox.information(self, 'Статус обучения', info or 'Файл статуса пуст.')
+        if raw is None:
+            QMessageBox.information(self, 'Статус обучения', 'Файл статуса отсутствует.')
+            return
+        if payload:
+            status = payload.get('status', 'неизвестно').capitalize()
+            timestamp = payload.get('timestamp', '—')
+            message = payload.get('message') or payload.get('details') or 'Нет сообщения.'
+            metrics = payload.get('metrics')
+            lines = [
+                f"Статус: {status}",
+                f"Время: {timestamp}",
+                f"Сообщение: {message}"
+            ]
+            if metrics:
+                lines.append(f"Метрики: {metrics}")
+            text = '\n'.join(lines)
+        else:
+            text = raw or 'Файл статуса пуст.'
+        QMessageBox.information(self, 'Статус обучения', text)
         self._update_training_status_label()
 
     def refresh_metrics(self):
@@ -293,19 +324,61 @@ class MainWindow(QMainWindow):
             self.user_admin_action.setVisible(self.current_user_role == 'admin')
 
     def _update_training_status_label(self):
-        training_cfg = self.settings.get_training_config()
-        status_path = training_cfg.get('status_file')
-        if not status_path:
-            status_path = os.path.join(training_cfg.get('reports_dir'), 'training_status.json')
-        if not os.path.exists(status_path):
+        status_path, raw, payload = self._get_training_status_payload()
+        if not status_path or raw is None:
             self.training_status_label.setText('Обучение: нет данных')
             return
+        if payload:
+            status = payload.get('status', 'неизвестно')
+            icon = self._status_indicator(status)
+            timestamp = payload.get('timestamp')
+            summary = payload.get('message') or payload.get('details') or ''
+            suffix = f" · {timestamp}" if timestamp else ''
+            self.training_status_label.setText(f'{icon} Обучение: {status}{suffix} {summary[:30]}')
+        elif raw:
+            self.training_status_label.setText(f'Обучение: {raw[:60]}')
+        else:
+            self.training_status_label.setText('Обучение: статус неизвестен')
+
+    def _setup_quick_actions(self):
+        self.quick_actions = QuickActionsManager()
+        self.quick_actions.register(
+            QuickAction('Очистить чат', 'Удаляет историю текущей сессии и поле ввода.', self.chat_widget.clear_chat)
+        )
+        self.quick_actions.register(
+            QuickAction('Показать статус обучения', 'Открывает последнее сообщение о ходе обучения.', self.show_training_status)
+        )
+        self.quick_actions.register(
+            QuickAction('Перезагрузить модель', 'Перезапускает модель и обновляет настройки генерации.', self.reload_model)
+        )
+        self.quick_actions.register(
+            QuickAction('Открыть историю', 'Переходит к журналу диалогов с фильтрами.', self.open_history)
+        )
+
+    def _get_training_status_payload(self):
+        training_cfg = self.settings.get_training_config()
+        status_path = training_cfg.get('status_file') or os.path.join(training_cfg.get('reports_dir'), 'training_status.json')
+        if not status_path or not os.path.exists(status_path):
+            return status_path, None, None
         try:
             with open(status_path, 'r', encoding='utf-8') as f:
                 data = f.read().strip()
-            if not data:
-                self.training_status_label.setText('Обучение: статус неизвестен')
-            else:
-                self.training_status_label.setText(f'Обучение: {data[:60]}...')
         except Exception:
-            self.training_status_label.setText('Обучение: ошибка чтения')
+            return status_path, None, None
+        if not data:
+            return status_path, '', None
+        try:
+            payload = json.loads(data)
+        except ValueError:
+            payload = None
+        return status_path, data, payload
+
+    def _status_indicator(self, status: str) -> str:
+        normalized = (status or '').lower()
+        if normalized in ('completed', 'success', 'done'):
+            return '🟢'
+        if normalized in ('running', 'in_progress'):
+            return '🟡'
+        if normalized in ('failed', 'error'):
+            return '🔴'
+        return '⚪'
