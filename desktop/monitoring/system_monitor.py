@@ -26,6 +26,8 @@ class ResourceMonitor:
     def __init__(self, log_path: str):
         self.log_path = log_path
         Path(self.log_path).parent.mkdir(parents=True, exist_ok=True)
+        self._gpu_method = None  # Кешируем рабочий метод определения GPU
+        self._gpu_errors_shown = False  # Флаг для однократного вывода ошибок
 
     def collect(self) -> Dict[str, Any]:
         metrics = {
@@ -44,64 +46,119 @@ class ResourceMonitor:
     
     def _get_gpu_info(self) -> Dict[str, Any]:
         """Получает информацию о GPU разными способами"""
+        # Если уже нашли рабочий метод, используем его
+        if self._gpu_method == 'torch':
+            return self._get_gpu_torch()
+        elif self._gpu_method == 'pynvml':
+            return self._get_gpu_pynvml()
+        elif self._gpu_method == 'wmi':
+            return self._get_gpu_wmi()
+        elif self._gpu_method == 'none':
+            return {}
+        
+        # Пробуем найти рабочий метод
+        errors = []
+        
         # Способ 1: через PyTorch
         if TORCH_AVAILABLE and torch is not None:
-            try:
-                if torch.cuda.is_available():
-                    gpu_index = torch.cuda.current_device()
-                    total_mem = torch.cuda.get_device_properties(gpu_index).total / (1024 ** 3)
-                    free_mem, total = torch.cuda.mem_get_info()
-                    used_mem = (total - free_mem) / (1024 ** 3)
-                    return {
-                        'gpu_name': torch.cuda.get_device_name(gpu_index),
-                        'gpu_memory_total': round(total_mem, 2),
-                        'gpu_memory_used': round(used_mem, 2)
-                    }
-            except Exception as e:
-                print(f"Ошибка при получении информации через PyTorch: {e}")
+            result = self._get_gpu_torch()
+            if result:
+                self._gpu_method = 'torch'
+                return result
+            else:
+                errors.append("PyTorch: CUDA недоступен")
         
         # Способ 2: через pynvml (NVIDIA Management Library)
         if NVML_AVAILABLE and pynvml is not None:
-            try:
-                pynvml.nvmlInit()
-                device_count = pynvml.nvmlDeviceGetCount()
-                if device_count > 0:
-                    handle = pynvml.nvmlDeviceGetHandleByIndex(0)
-                    name = pynvml.nvmlDeviceGetName(handle)
-                    if isinstance(name, bytes):
-                        name = name.decode('utf-8')
-                    mem_info = pynvml.nvmlDeviceGetMemoryInfo(handle)
-                    total_mem = mem_info.total / (1024 ** 3)
-                    used_mem = mem_info.used / (1024 ** 3)
-                    pynvml.nvmlShutdown()
-                    return {
-                        'gpu_name': name,
-                        'gpu_memory_total': round(total_mem, 2),
-                        'gpu_memory_used': round(used_mem, 2)
-                    }
-            except Exception as e:
-                print(f"Ошибка при получении информации через pynvml: {e}")
-                try:
-                    pynvml.nvmlShutdown()
-                except:
-                    pass
+            result = self._get_gpu_pynvml()
+            if result:
+                self._gpu_method = 'pynvml'
+                return result
+            else:
+                errors.append("pynvml: NVML библиотека не найдена")
         
         # Способ 3: через WMI (только для Windows)
         if os.name == 'nt':
+            result = self._get_gpu_wmi()
+            if result:
+                self._gpu_method = 'wmi'
+                return result
+            else:
+                errors.append("WMI: не удалось получить информацию")
+        
+        # Если ничего не сработало, выводим ошибки один раз
+        if not self._gpu_errors_shown:
+            print("GPU не обнаружен. Попытки:")
+            for error in errors:
+                print(f"  - {error}")
+            self._gpu_errors_shown = True
+        
+        self._gpu_method = 'none'
+        return {}
+    
+    def _get_gpu_torch(self) -> Dict[str, Any]:
+        """Получает информацию о GPU через PyTorch"""
+        try:
+            if torch.cuda.is_available():
+                gpu_index = torch.cuda.current_device()
+                total_mem = torch.cuda.get_device_properties(gpu_index).total / (1024 ** 3)
+                free_mem, total = torch.cuda.mem_get_info()
+                used_mem = (total - free_mem) / (1024 ** 3)
+                return {
+                    'gpu_name': torch.cuda.get_device_name(gpu_index),
+                    'gpu_memory_total': round(total_mem, 2),
+                    'gpu_memory_used': round(used_mem, 2)
+                }
+        except Exception:
+            pass
+        return {}
+    
+    def _get_gpu_pynvml(self) -> Dict[str, Any]:
+        """Получает информацию о GPU через pynvml"""
+        try:
+            pynvml.nvmlInit()
+            device_count = pynvml.nvmlDeviceGetCount()
+            if device_count > 0:
+                handle = pynvml.nvmlDeviceGetHandleByIndex(0)
+                name = pynvml.nvmlDeviceGetName(handle)
+                if isinstance(name, bytes):
+                    name = name.decode('utf-8')
+                mem_info = pynvml.nvmlDeviceGetMemoryInfo(handle)
+                total_mem = mem_info.total / (1024 ** 3)
+                used_mem = mem_info.used / (1024 ** 3)
+                pynvml.nvmlShutdown()
+                return {
+                    'gpu_name': name,
+                    'gpu_memory_total': round(total_mem, 2),
+                    'gpu_memory_used': round(used_mem, 2)
+                }
+        except Exception:
+            pass
+        finally:
             try:
-                import wmi
-                c = wmi.WMI()
-                for gpu in c.Win32_VideoController():
-                    if gpu.AdapterRAM and int(gpu.AdapterRAM) > 0:
-                        total_mem = int(gpu.AdapterRAM) / (1024 ** 3)
+                pynvml.nvmlShutdown()
+            except:
+                pass
+        return {}
+    
+    def _get_gpu_wmi(self) -> Dict[str, Any]:
+        """Получает информацию о GPU через WMI (Windows)"""
+        try:
+            import wmi
+            c = wmi.WMI()
+            for gpu in c.Win32_VideoController():
+                # Проверяем, что это дискретная видеокарта с памятью
+                if gpu.AdapterRAM and int(gpu.AdapterRAM) > 0:
+                    total_mem = int(gpu.AdapterRAM) / (1024 ** 3)
+                    # Только если память больше 1GB (чтобы исключить встроенную графику)
+                    if total_mem >= 1.0:
                         return {
                             'gpu_name': gpu.Name,
                             'gpu_memory_total': round(total_mem, 2),
                             'gpu_memory_used': 0  # WMI не предоставляет используемую память
                         }
-            except Exception as e:
-                print(f"Ошибка при получении информации через WMI: {e}")
-        
+        except Exception:
+            pass
         return {}
 
     def _log(self, metrics: Dict[str, Any]):
