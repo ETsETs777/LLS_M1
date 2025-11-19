@@ -16,13 +16,15 @@ from desktop.ui.widgets.status_panel import StatusPanel
 from desktop.plugins.manager import PluginManager
 from desktop.ui.plugins.plugin_dialog import PluginDialog
 from desktop.updater.update_manager import UpdateManager
+from desktop.backup.backup_manager import BackupManager
+from desktop.ui.backup.backup_dialog import BackupDialog
 
 class MainWindow(QMainWindow):
     def __init__(self, settings: Optional[Settings] = None, user_repository=None):
         super().__init__()
         self.settings = settings or Settings()
         self.theme_manager = ThemeManager()
-        self.neural_network = NeuralNetwork()
+        self.neural_network = NeuralNetwork(settings=self.settings)
         self.user_repository = user_repository
         self.history_manager = HistoryManager(self.settings)
         self.history_manager.cleanup_old_records()
@@ -33,11 +35,16 @@ class MainWindow(QMainWindow):
         self.resource_monitor = ResourceMonitor(os.path.join(log_dir, 'metrics.log'))
         self.status_panel = StatusPanel()
         self.update_manager = UpdateManager(self.settings)
+        self.backup_manager = BackupManager(self.settings)
         updater_cfg = self.settings.get_updater_config()
         if updater_cfg.get('verify_models_on_start'):
             self.update_manager.verify_models()
         self.current_user = None
         self._load_current_user()
+        if self.current_user:
+            self.status_panel.set_user(self.current_user.get('full_name', '—'))
+        self.vram_warning_threshold = 0.9
+        self.vram_warning_shown = False
         self.monitor_timer = QTimer(self)
         self.monitor_timer.timeout.connect(self.refresh_metrics)
         self.init_ui()
@@ -108,6 +115,10 @@ class MainWindow(QMainWindow):
         verify_action = QAction('Проверить модель', self)
         verify_action.triggered.connect(self.verify_models)
         tools_menu.addAction(verify_action)
+
+        backup_action = QAction('Резервные копии', self)
+        backup_action.triggered.connect(self.open_backup_dialog)
+        tools_menu.addAction(backup_action)
         
     def create_toolbar(self):
         toolbar = self.addToolBar('Панель инструментов')
@@ -133,6 +144,7 @@ class MainWindow(QMainWindow):
         self.status_panel.reload_button.clicked.connect(self.refresh_metrics)
         if self.current_user:
             self.status_panel.set_user(self.current_user.get('full_name', '—'))
+        self.status_panel.model_reload_button.clicked.connect(self.reload_model)
         
     def toggle_theme(self):
         current = self.settings.get_theme()
@@ -178,6 +190,10 @@ class MainWindow(QMainWindow):
             self.current_user = self.user_repository.get_user(user_id)
         else:
             self.current_user = None
+        if self.current_user:
+            self.status_panel.set_user(self.current_user.get('full_name', '—'))
+        else:
+            self.status_panel.set_user('—')
 
     def open_history(self):
         dialog = HistoryDialog(self.history_manager, self)
@@ -194,3 +210,33 @@ class MainWindow(QMainWindow):
     def refresh_metrics(self):
         metrics = self.resource_monitor.collect()
         self.status_panel.update_metrics(metrics)
+        self._check_vram(metrics)
+        self.status_bar.showMessage('Мониторинг обновлён')
+
+    def reload_model(self):
+        try:
+            self.neural_network.reload_model()
+            QMessageBox.information(self, 'Модель перезагружена', 'Модель успешно перезагружена.')
+        except Exception as exc:
+            QMessageBox.critical(self, 'Ошибка перезагрузки', str(exc))
+
+    def open_backup_dialog(self):
+        dialog = BackupDialog(self.backup_manager, self)
+        dialog.exec_()
+
+    def _check_vram(self, metrics):
+        total = metrics.get('gpu_memory_total')
+        used = metrics.get('gpu_memory_used')
+        if not total or not used:
+            self.vram_warning_shown = False
+            return
+        ratio = used / total if total else 0
+        if ratio >= self.vram_warning_threshold and not self.vram_warning_shown:
+            QMessageBox.warning(
+                self,
+                'Внимание: мало VRAM',
+                'Память GPU почти заполнена. Снизьте параметры генерации или перезагрузите модель.'
+            )
+            self.vram_warning_shown = True
+        elif ratio < self.vram_warning_threshold - 0.1:
+            self.vram_warning_shown = False

@@ -1,12 +1,15 @@
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 from desktop.config.settings import Settings
 from desktop.core.model_manager import ModelManager
 
 
 class NeuralNetwork:
-    def __init__(self):
-        self.settings = Settings()
+    def __init__(self, settings: Optional[Settings] = None):
+        self.settings = settings or Settings()
+        self._init_model_manager()
+
+    def _init_model_manager(self):
         self.model_manager = ModelManager(
             model_path=self.settings.get_model_path(),
             generation_params=self.settings.get_generation_config()
@@ -23,6 +26,10 @@ class NeuralNetwork:
     def refresh_from_settings(self):
         self.settings.reload()
         self.model_manager.update_generation_params(self.settings.get_generation_config())
+
+    def reload_model(self):
+        self.settings.reload()
+        self._init_model_manager()
 
     def update_prompt(self, prompt: str):
         self.settings.set_prompt(prompt)
