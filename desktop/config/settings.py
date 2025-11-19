@@ -66,7 +66,11 @@ class Settings:
                 'auto_check': True,
                 'channel': 'stable',
                 'verify_models_on_start': True
-            }
+            },
+            'database': {
+                'path': os.path.join(base_dir, 'data', 'database', 'app.db')
+            },
+            'current_user_id': None
         }
             
     def save_config(self):
@@ -79,6 +83,15 @@ class Settings:
     def set_model_path(self, path: str):
         self.config['model_path'] = path
         self.save_config()
+
+    def get_database_path(self) -> str:
+        database = self.config.get('database', self.default_config()['database'])
+        path = database.get('path')
+        if not path:
+            path = self.default_config()['database']['path']
+        self.config['database'] = database
+        self.save_config()
+        return path
         
     def get_theme(self) -> str:
         return self.config.get('theme', 'light')
@@ -174,4 +187,11 @@ class Settings:
         updater.update(data)
         self.config['updater'] = updater
         self.save_config()
+
+    def set_current_user_id(self, user_id: int):
+        self.config['current_user_id'] = user_id
+        self.save_config()
+
+    def get_current_user_id(self) -> Any:
+        return self.config.get('current_user_id')
 

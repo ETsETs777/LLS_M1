@@ -9,11 +9,13 @@ class StatusPanel(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(12)
         self.setLayout(layout)
+        self.user_label = QLabel('Пользователь: не выбран')
         self.cpu_label = QLabel('CPU: --%')
         self.ram_label = QLabel('RAM: --%')
         self.gpu_label = QLabel('GPU: недоступно')
         self.reload_button = QPushButton('🔄')
         self.reload_button.setFixedWidth(32)
+        layout.addWidget(self.user_label)
         layout.addWidget(self.cpu_label)
         layout.addWidget(self.ram_label)
         layout.addWidget(self.gpu_label)
@@ -29,4 +31,7 @@ class StatusPanel(QWidget):
             )
         else:
             self.gpu_label.setText('GPU: нет')
+
+    def set_user(self, name: str):
+        self.user_label.setText(f'Пользователь: {name}')
 

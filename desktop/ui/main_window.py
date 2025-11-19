@@ -1,4 +1,6 @@
 import os
+from typing import Optional
+
 from PyQt5.QtCore import QTimer
 from PyQt5.QtWidgets import QMainWindow, QVBoxLayout, QWidget, QPushButton, QAction, QStatusBar, QMessageBox
 
@@ -16,11 +18,12 @@ from desktop.ui.plugins.plugin_dialog import PluginDialog
 from desktop.updater.update_manager import UpdateManager
 
 class MainWindow(QMainWindow):
-    def __init__(self):
+    def __init__(self, settings: Optional[Settings] = None, user_repository=None):
         super().__init__()
-        self.settings = Settings()
+        self.settings = settings or Settings()
         self.theme_manager = ThemeManager()
         self.neural_network = NeuralNetwork()
+        self.user_repository = user_repository
         self.history_manager = HistoryManager(self.settings)
         self.history_manager.cleanup_old_records()
         self.plugin_manager = PluginManager(self.settings)
@@ -33,6 +36,8 @@ class MainWindow(QMainWindow):
         updater_cfg = self.settings.get_updater_config()
         if updater_cfg.get('verify_models_on_start'):
             self.update_manager.verify_models()
+        self.current_user = None
+        self._load_current_user()
         self.monitor_timer = QTimer(self)
         self.monitor_timer.timeout.connect(self.refresh_metrics)
         self.init_ui()
@@ -126,6 +131,8 @@ class MainWindow(QMainWindow):
         self.setStatusBar(self.status_bar)
         self.status_bar.addPermanentWidget(self.status_panel)
         self.status_panel.reload_button.clicked.connect(self.refresh_metrics)
+        if self.current_user:
+            self.status_panel.set_user(self.current_user.get('full_name', '—'))
         
     def toggle_theme(self):
         current = self.settings.get_theme()
@@ -164,6 +171,13 @@ class MainWindow(QMainWindow):
         if dialog.exec_():
             self.neural_network.refresh_from_settings()
             self.apply_theme(self.settings.get_theme())
+
+    def _load_current_user(self):
+        user_id = self.settings.get_current_user_id()
+        if user_id and self.user_repository:
+            self.current_user = self.user_repository.get_user(user_id)
+        else:
+            self.current_user = None
 
     def open_history(self):
         dialog = HistoryDialog(self.history_manager, self)
