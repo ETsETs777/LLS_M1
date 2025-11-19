@@ -6,6 +6,7 @@ from typing import Optional, Dict, List
 
 from PyQt5.QtCore import QTimer, Qt
 from PyQt5.QtWidgets import QMainWindow, QVBoxLayout, QWidget, QPushButton, QAction, QStatusBar, QMessageBox, QLabel, QHBoxLayout, QMenu
+from PyQt5.QtGui import QIcon
 
 from desktop.ui.chat_widget import ChatWidget
 from desktop.ui.theme_manager import ThemeManager
@@ -173,18 +174,24 @@ class MainWindow(QMainWindow):
         settings_layout = QHBoxLayout()
         settings_layout.setContentsMargins(0, 0, 10, 0)
         settings_layout.addStretch()
-        self.settings_button = QPushButton('⚙️ Настройки')
+        self.settings_button = QPushButton()
         self.settings_button.clicked.connect(self.open_settings)
-        self.settings_button.setFixedHeight(32)
+        self.settings_button.setFixedSize(36, 36)
+        self.settings_button.setToolTip('Настройки')
+        
+        # Устанавливаем иконку
+        icon_path = os.path.join(os.path.dirname(__file__), 'images', 'settings.png')
+        if os.path.exists(icon_path):
+            self.settings_button.setIcon(QIcon(icon_path))
+            self.settings_button.setIconSize(self.settings_button.size())
+        
         self.settings_button.setStyleSheet("""
             QPushButton {
                 background-color: #0078d4;
                 color: white;
                 border: none;
-                border-radius: 16px;
-                padding: 6px 16px;
-                font-size: 13px;
-                font-weight: 500;
+                border-radius: 18px;
+                padding: 6px;
             }
             QPushButton:hover {
                 background-color: #106ebe;
@@ -202,30 +209,61 @@ class MainWindow(QMainWindow):
         """Создает панель кнопок внизу"""
         bottom_layout = self.bottom_buttons_panel.layout()
         
-        self.theme_button = QPushButton('🌙 Темная тема')
+        # Получаем путь к папке с иконками
+        icons_dir = os.path.join(os.path.dirname(__file__), 'images')
+        
+        # Кнопка темы
+        self.theme_button = QPushButton()
         self.theme_button.clicked.connect(self.toggle_theme)
-        self.theme_button.setFixedHeight(32)
+        self.theme_button.setFixedSize(36, 36)
+        self.theme_button.setToolTip('Переключить тему')
+        icon_path = os.path.join(icons_dir, 'theme.png')
+        if os.path.exists(icon_path):
+            self.theme_button.setIcon(QIcon(icon_path))
+            self.theme_button.setIconSize(self.theme_button.size())
         bottom_layout.addWidget(self.theme_button)
         
-        clear_button = QPushButton('🗑 Очистить')
+        # Кнопка очистки
+        clear_button = QPushButton()
         clear_button.clicked.connect(self.chat_widget.clear_chat)
-        clear_button.setFixedHeight(32)
+        clear_button.setFixedSize(36, 36)
+        clear_button.setToolTip('Очистить чат')
+        icon_path = os.path.join(icons_dir, 'clear.png')
+        if os.path.exists(icon_path):
+            clear_button.setIcon(QIcon(icon_path))
+            clear_button.setIconSize(clear_button.size())
         bottom_layout.addWidget(clear_button)
 
-        history_button = QPushButton('📚 История')
+        # Кнопка истории
+        history_button = QPushButton()
         history_button.clicked.connect(self.open_history)
-        history_button.setFixedHeight(32)
+        history_button.setFixedSize(36, 36)
+        history_button.setToolTip('История')
+        icon_path = os.path.join(icons_dir, 'history.png')
+        if os.path.exists(icon_path):
+            history_button.setIcon(QIcon(icon_path))
+            history_button.setIconSize(history_button.size())
         bottom_layout.addWidget(history_button)
         
         # Кнопка статистики
-        statistics_button = QPushButton('📊 Статистика')
+        statistics_button = QPushButton()
         statistics_button.clicked.connect(self.open_statistics)
-        statistics_button.setFixedHeight(32)
+        statistics_button.setFixedSize(36, 36)
+        statistics_button.setToolTip('Статистика')
+        icon_path = os.path.join(icons_dir, 'monitor.png')
+        if os.path.exists(icon_path):
+            statistics_button.setIcon(QIcon(icon_path))
+            statistics_button.setIconSize(statistics_button.size())
         bottom_layout.addWidget(statistics_button)
         
         # Кнопка действий с выпадающим меню
-        self.actions_button = QPushButton('⚙️ Действия')
-        self.actions_button.setFixedHeight(32)
+        self.actions_button = QPushButton()
+        self.actions_button.setFixedSize(36, 36)
+        self.actions_button.setToolTip('Действия')
+        icon_path = os.path.join(icons_dir, 'actions.png')
+        if os.path.exists(icon_path):
+            self.actions_button.setIcon(QIcon(icon_path))
+            self.actions_button.setIconSize(self.actions_button.size())
         
         # Создаем меню для кнопки действий
         actions_menu = QMenu(self)
@@ -250,11 +288,9 @@ class MainWindow(QMainWindow):
         button_style = """
             QPushButton {
                 background-color: rgba(0, 0, 0, 0.05);
-                color: #000000;
                 border: 1px solid rgba(0, 0, 0, 0.2);
-                border-radius: 16px;
-                padding: 6px 12px;
-                font-size: 13px;
+                border-radius: 18px;
+                padding: 6px;
             }
             QPushButton:hover {
                 background-color: rgba(0, 0, 0, 0.1);
