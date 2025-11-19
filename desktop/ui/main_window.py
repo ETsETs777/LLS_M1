@@ -2,7 +2,7 @@ import os
 from typing import Optional
 
 from PyQt5.QtCore import QTimer
-from PyQt5.QtWidgets import QMainWindow, QVBoxLayout, QWidget, QPushButton, QAction, QStatusBar, QMessageBox
+from PyQt5.QtWidgets import QMainWindow, QVBoxLayout, QWidget, QPushButton, QAction, QStatusBar, QMessageBox, QLabel
 
 from desktop.ui.chat_widget import ChatWidget
 from desktop.ui.theme_manager import ThemeManager
@@ -36,6 +36,7 @@ class MainWindow(QMainWindow):
         self.status_panel = StatusPanel()
         self.update_manager = UpdateManager(self.settings)
         self.backup_manager = BackupManager(self.settings)
+        self.training_status_label = QLabel('Обучение: нет данных')
         updater_cfg = self.settings.get_updater_config()
         if updater_cfg.get('verify_models_on_start'):
             self.update_manager.verify_models()
@@ -46,10 +47,14 @@ class MainWindow(QMainWindow):
         self.vram_warning_shown = False
         self.monitor_timer = QTimer(self)
         self.monitor_timer.timeout.connect(self.refresh_metrics)
+        self.training_timer = QTimer(self)
+        self.training_timer.timeout.connect(self._update_training_status_label)
         self.init_ui()
         self.load_window_state()
         self.apply_theme(self.settings.get_theme())
         self.monitor_timer.start(5000)
+        self.training_timer.start(10000)
+        self._update_training_status_label()
         
     def init_ui(self):
         self.setWindowTitle('Нейросеть Чат')
@@ -149,6 +154,7 @@ class MainWindow(QMainWindow):
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
         self.status_bar.addPermanentWidget(self.status_panel)
+        self.status_bar.addPermanentWidget(self.training_status_label)
         self.status_panel.reload_button.clicked.connect(self.refresh_metrics)
         if self.current_user:
             self.status_panel.set_user(self.current_user.get('full_name', '—'), self.current_user_role)
@@ -243,6 +249,7 @@ class MainWindow(QMainWindow):
         with open(status_path, 'r', encoding='utf-8') as f:
             info = f.read().strip()
         QMessageBox.information(self, 'Статус обучения', info or 'Файл статуса пуст.')
+        self._update_training_status_label()
 
     def refresh_metrics(self):
         metrics = self.resource_monitor.collect()
@@ -284,3 +291,21 @@ class MainWindow(QMainWindow):
     def _update_role_dependent_actions(self):
         if hasattr(self, 'user_admin_action'):
             self.user_admin_action.setVisible(self.current_user_role == 'admin')
+
+    def _update_training_status_label(self):
+        training_cfg = self.settings.get_training_config()
+        status_path = training_cfg.get('status_file')
+        if not status_path:
+            status_path = os.path.join(training_cfg.get('reports_dir'), 'training_status.json')
+        if not os.path.exists(status_path):
+            self.training_status_label.setText('Обучение: нет данных')
+            return
+        try:
+            with open(status_path, 'r', encoding='utf-8') as f:
+                data = f.read().strip()
+            if not data:
+                self.training_status_label.setText('Обучение: статус неизвестен')
+            else:
+                self.training_status_label.setText(f'Обучение: {data[:60]}...')
+        except Exception:
+            self.training_status_label.setText('Обучение: ошибка чтения')
