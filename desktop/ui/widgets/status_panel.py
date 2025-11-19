@@ -13,16 +13,10 @@ class StatusPanel(QWidget):
         self.cpu_label = QLabel('CPU: --%')
         self.ram_label = QLabel('RAM: --%')
         self.gpu_label = QLabel('GPU: недоступно')
-        self.reload_button = QPushButton('🔄 Метрики')
-        self.reload_button.setFixedWidth(110)
-        self.model_reload_button = QPushButton('♻ Модель')
-        self.model_reload_button.setFixedWidth(110)
         layout.addWidget(self.user_label)
         layout.addWidget(self.cpu_label)
         layout.addWidget(self.ram_label)
         layout.addWidget(self.gpu_label)
-        layout.addWidget(self.reload_button)
-        layout.addWidget(self.model_reload_button)
         layout.addStretch()
 
     def update_metrics(self, metrics):

@@ -179,6 +179,19 @@ class MainWindow(QMainWindow):
         quick_actions_action = QAction('Быстрые действия', self)
         quick_actions_action.triggered.connect(self.open_quick_actions)
         tools_menu.addAction(quick_actions_action)
+        
+        tools_menu.addSeparator()
+        
+        refresh_metrics_action = QAction('🔄 Обновить метрики', self)
+        refresh_metrics_action.setShortcut('F5')
+        refresh_metrics_action.triggered.connect(self.refresh_metrics)
+        tools_menu.addAction(refresh_metrics_action)
+        
+        reload_model_action = QAction('♻ Перезагрузить модель', self)
+        reload_model_action.setShortcut('Ctrl+R')
+        reload_model_action.triggered.connect(self.reload_model)
+        tools_menu.addAction(reload_model_action)
+        
         self._update_role_dependent_actions()
         
     def create_top_settings_button(self):
@@ -223,10 +236,8 @@ class MainWindow(QMainWindow):
         self.setStatusBar(self.status_bar)
         self.status_bar.addPermanentWidget(self.status_panel)
         self.status_bar.addPermanentWidget(self.training_status_label)
-        self.status_panel.reload_button.clicked.connect(self.refresh_metrics)
         if self.current_user:
             self.status_panel.set_user(self.current_user.get('full_name', '—'), self.current_user_role)
-        self.status_panel.model_reload_button.clicked.connect(self.reload_model)
         
     def toggle_theme(self):
         current = self.settings.get_theme()
