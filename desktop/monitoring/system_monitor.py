@@ -28,6 +28,13 @@ class ResourceMonitor:
         Path(self.log_path).parent.mkdir(parents=True, exist_ok=True)
         self._gpu_method = None  # Кешируем рабочий метод определения GPU
         self._gpu_errors_shown = False  # Флаг для однократного вывода ошибок
+        
+        # Очищаем лог-файл при запуске
+        try:
+            with open(self.log_path, 'w', encoding='utf-8') as f:
+                f.write('')  # Очищаем файл
+        except Exception:
+            pass  # Если не удалось очистить, продолжаем работу
 
     def collect(self) -> Dict[str, Any]:
         metrics = {
