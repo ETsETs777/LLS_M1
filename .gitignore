@@ -31,4 +31,6 @@ ENV/
 config/config.json
 models/
 data/
+logs/
+training_runs/
 

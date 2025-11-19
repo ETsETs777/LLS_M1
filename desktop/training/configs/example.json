@@ -1,0 +1,24 @@
+{
+  "model_path": "../../models",
+  "output_dir": "../../training_runs/checkpoints",
+  "dataset_path": "../../data/datasets/conversations.jsonl",
+  "dataset_paths": [
+    "../../data/datasets/conversations_additional.jsonl"
+  ],
+  "eval_dataset_path": "../../data/datasets/validation.jsonl",
+  "report_dir": "../../data/reports",
+  "max_steps": 500,
+  "per_device_train_batch_size": 2,
+  "gradient_accumulation_steps": 4,
+  "learning_rate": 2e-5,
+  "warmup_steps": 50,
+  "save_steps": 100,
+  "logging_steps": 10,
+  "fp16": false,
+  "lora_r": 8,
+  "lora_alpha": 16,
+  "lora_dropout": 0.05,
+  "max_seq_length": 1024,
+  "evaluation_metric": "perplexity"
+}
+

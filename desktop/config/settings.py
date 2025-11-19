@@ -22,9 +22,13 @@ class Settings:
         else:
             self.config = self.default_config()
             self.save_config()
+
+    def reload(self):
+        self.load_config()
             
     def default_config(self) -> Dict[str, Any]:
         base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+        data_dir = os.path.join(base_dir, 'data')
         return {
             'model_path': os.path.join(base_dir, 'models'),
             'theme': 'light',
@@ -35,6 +39,33 @@ class Settings:
                 'top_p': 0.95,
                 'do_sample': True,
                 'repetition_penalty': 1.05
+            },
+            'presets': {},
+            'history': {
+                'export_dir': os.path.join(data_dir, 'exports'),
+                'retention_days': 90,
+                'default_tags': []
+            },
+            'training': {
+                'reports_dir': os.path.join(data_dir, 'reports'),
+                'runs_dir': os.path.join(base_dir, 'training_runs')
+            },
+            'plugins': {
+                'enabled': [],
+                'available': {
+                    'web_search': {
+                        'module': 'desktop.plugins.examples.web_search',
+                        'class': 'WebSearchPlugin',
+                        'name': 'Поиск в сети',
+                        'description': 'Стартовый плагин для интеграции веб-поиска.',
+                        'config': {}
+                    }
+                }
+            },
+            'updater': {
+                'auto_check': True,
+                'channel': 'stable',
+                'verify_models_on_start': True
             }
         }
             
@@ -44,6 +75,10 @@ class Settings:
             
     def get_model_path(self) -> str:
         return self.config.get('model_path') or self.default_config()['model_path']
+
+    def set_model_path(self, path: str):
+        self.config['model_path'] = path
+        self.save_config()
         
     def get_theme(self) -> str:
         return self.config.get('theme', 'light')
@@ -57,4 +92,86 @@ class Settings:
 
     def get_prompt(self) -> str:
         return self.config.get('prompt', self.default_config()['prompt'])
+
+    def set_prompt(self, prompt: str):
+        self.config['prompt'] = prompt
+        self.save_config()
+
+    def update_generation_config(self, updates: Dict[str, Any]):
+        generation = self.config.get('generation', self.default_config()['generation'])
+        generation.update(updates)
+        self.config['generation'] = generation
+        self.save_config()
+
+    def get_presets(self) -> Dict[str, Any]:
+        return self.config.get('presets', {})
+
+    def save_preset(self, name: str, data: Dict[str, Any]):
+        presets = self.config.get('presets', {})
+        presets[name] = data
+        self.config['presets'] = presets
+        self.save_config()
+
+    def delete_preset(self, name: str):
+        presets = self.config.get('presets', {})
+        if name in presets:
+            del presets[name]
+            self.config['presets'] = presets
+            self.save_config()
+
+    def apply_preset(self, name: str):
+        presets = self.config.get('presets', {})
+        data = presets.get(name)
+        if not data:
+            return
+        self.config['prompt'] = data.get('prompt', self.get_prompt())
+        self.config['generation'] = data.get('generation', self.get_generation_config())
+        if data.get('model_path'):
+            self.config['model_path'] = data['model_path']
+        self.save_config()
+
+    def get_history_config(self) -> Dict[str, Any]:
+        defaults = self.default_config()['history']
+        history = self.config.get('history', defaults)
+        defaults.update(history)
+        self.config['history'] = defaults
+        self.save_config()
+        return defaults
+
+    def update_history_config(self, updates: Dict[str, Any]):
+        history = self.get_history_config()
+        history.update(updates)
+        self.config['history'] = history
+        self.save_config()
+
+    def get_training_config(self) -> Dict[str, Any]:
+        defaults = self.default_config()['training']
+        training = self.config.get('training', defaults)
+        defaults.update(training)
+        self.config['training'] = defaults
+        self.save_config()
+        return defaults
+
+    def get_plugin_config(self) -> Dict[str, Any]:
+        return self.config.get('plugins', self.default_config()['plugins'])
+
+    def update_plugin_config(self, data: Dict[str, Any]):
+        plugins = self.get_plugin_config()
+        plugins.update(data)
+        self.config['plugins'] = plugins
+        self.save_config()
+
+    def get_updater_config(self) -> Dict[str, Any]:
+        defaults = self.default_config()['updater']
+        updater = self.config.get('updater', defaults)
+        defaults.update(updater)
+        self.config['updater'] = defaults
+        self.save_config()
+        return defaults
+
+    def update_updater_config(self, data: Dict[str, Any]):
+        updater = self.get_updater_config()
+        updater.update(data)
+        self.config['updater'] = updater
+        self.save_config()
 

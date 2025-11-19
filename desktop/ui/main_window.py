@@ -1,8 +1,19 @@
-from PyQt5.QtWidgets import QMainWindow, QVBoxLayout, QWidget, QPushButton, QHBoxLayout, QAction, QStatusBar
+import os
+from PyQt5.QtCore import QTimer
+from PyQt5.QtWidgets import QMainWindow, QVBoxLayout, QWidget, QPushButton, QAction, QStatusBar, QMessageBox
+
 from desktop.ui.chat_widget import ChatWidget
 from desktop.ui.theme_manager import ThemeManager
 from desktop.core.neural_network import NeuralNetwork
 from desktop.config.settings import Settings
+from desktop.ui.settings.settings_dialog import SettingsDialog
+from desktop.history.manager import HistoryManager
+from desktop.ui.history.history_dialog import HistoryDialog
+from desktop.monitoring.system_monitor import ResourceMonitor
+from desktop.ui.widgets.status_panel import StatusPanel
+from desktop.plugins.manager import PluginManager
+from desktop.ui.plugins.plugin_dialog import PluginDialog
+from desktop.updater.update_manager import UpdateManager
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -10,9 +21,24 @@ class MainWindow(QMainWindow):
         self.settings = Settings()
         self.theme_manager = ThemeManager()
         self.neural_network = NeuralNetwork()
+        self.history_manager = HistoryManager(self.settings)
+        self.history_manager.cleanup_old_records()
+        self.plugin_manager = PluginManager(self.settings)
+        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+        log_dir = os.path.join(base_dir, 'logs')
+        os.makedirs(log_dir, exist_ok=True)
+        self.resource_monitor = ResourceMonitor(os.path.join(log_dir, 'metrics.log'))
+        self.status_panel = StatusPanel()
+        self.update_manager = UpdateManager(self.settings)
+        updater_cfg = self.settings.get_updater_config()
+        if updater_cfg.get('verify_models_on_start'):
+            self.update_manager.verify_models()
+        self.monitor_timer = QTimer(self)
+        self.monitor_timer.timeout.connect(self.refresh_metrics)
         self.init_ui()
         self.load_window_state()
         self.apply_theme(self.settings.get_theme())
+        self.monitor_timer.start(5000)
         
     def init_ui(self):
         self.setWindowTitle('Нейросеть Чат')
@@ -37,6 +63,11 @@ class MainWindow(QMainWindow):
         
         file_menu = menubar.addMenu('Файл')
         
+        settings_action = QAction('Настройки', self)
+        settings_action.setShortcut('Ctrl+,')
+        settings_action.triggered.connect(self.open_settings)
+        file_menu.addAction(settings_action)
+
         clear_action = QAction('Очистить чат', self)
         clear_action.setShortcut('Ctrl+L')
         clear_action.triggered.connect(self.chat_widget.clear_chat)
@@ -58,6 +89,20 @@ class MainWindow(QMainWindow):
         dark_theme_action = QAction('Темная тема', self)
         dark_theme_action.triggered.connect(lambda: self.set_theme('dark'))
         view_menu.addAction(dark_theme_action)
+
+        tools_menu = menubar.addMenu('Инструменты')
+        history_action = QAction('История чатов', self)
+        history_action.setShortcut('Ctrl+H')
+        history_action.triggered.connect(self.open_history)
+        tools_menu.addAction(history_action)
+
+        plugins_action = QAction('Плагины', self)
+        plugins_action.triggered.connect(self.open_plugins)
+        tools_menu.addAction(plugins_action)
+
+        verify_action = QAction('Проверить модель', self)
+        verify_action.triggered.connect(self.verify_models)
+        tools_menu.addAction(verify_action)
         
     def create_toolbar(self):
         toolbar = self.addToolBar('Панель инструментов')
@@ -71,11 +116,16 @@ class MainWindow(QMainWindow):
         clear_button = QPushButton('🗑 Очистить')
         clear_button.clicked.connect(self.chat_widget.clear_chat)
         toolbar.addWidget(clear_button)
+
+        history_button = QPushButton('📚 История')
+        history_button.clicked.connect(self.open_history)
+        toolbar.addWidget(history_button)
         
     def create_status_bar(self):
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
-        self.status_bar.showMessage('Готов')
+        self.status_bar.addPermanentWidget(self.status_panel)
+        self.status_panel.reload_button.clicked.connect(self.refresh_metrics)
         
     def toggle_theme(self):
         current = self.settings.get_theme()
@@ -108,3 +158,25 @@ class MainWindow(QMainWindow):
     def closeEvent(self, event):
         self.save_window_state()
         event.accept()
+
+    def open_settings(self):
+        dialog = SettingsDialog(self.settings, self.neural_network, self)
+        if dialog.exec_():
+            self.neural_network.refresh_from_settings()
+            self.apply_theme(self.settings.get_theme())
+
+    def open_history(self):
+        dialog = HistoryDialog(self.history_manager, self)
+        dialog.exec_()
+
+    def open_plugins(self):
+        dialog = PluginDialog(self.plugin_manager, self)
+        dialog.exec_()
+
+    def verify_models(self):
+        result = self.update_manager.verify_models()
+        QMessageBox.information(self, 'Проверка модели', result['details'])
+
+    def refresh_metrics(self):
+        metrics = self.resource_monitor.collect()
+        self.status_panel.update_metrics(metrics)

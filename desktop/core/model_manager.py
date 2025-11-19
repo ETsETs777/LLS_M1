@@ -53,3 +53,19 @@ class ModelManager:
         text = self.tokenizer.decode(generated_part, skip_special_tokens=True)
         return text.strip() or 'Модель не смогла сформировать ответ.'
 
+    def update_generation_params(self, params: Dict[str, Any]):
+        self.generation_params.update(params or {})
+
+    def get_metadata(self) -> Dict[str, Any]:
+        config = getattr(self.model, 'config', None)
+        context = None
+        if config is not None:
+            context = getattr(config, 'n_positions', None) or getattr(config, 'max_position_embeddings', None)
+        return {
+            'model_path': os.path.abspath(self.model_path),
+            'device': str(self.device),
+            'dtype': str(getattr(self.model, 'dtype', 'unknown')),
+            'context_length': context,
+            'vocab_size': getattr(config, 'vocab_size', None),
+        }
+
