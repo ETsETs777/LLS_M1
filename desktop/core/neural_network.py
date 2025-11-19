@@ -1,4 +1,5 @@
 import os
+import time
 from desktop.config.settings import Settings
 
 class NeuralNetwork:
@@ -15,8 +16,9 @@ class NeuralNetwork:
     def generate_response(self, user_input: str) -> str:
         if not user_input:
             return "Пожалуйста, введите вопрос."
-            
-        response = f"Ответ на вопрос: {user_input}"
+        
+        time.sleep(0.5)
+        
+        response = f"Это ответ на ваш вопрос: '{user_input}'. В будущем здесь будет работать реальная модель нейросети."
         
         return response
-

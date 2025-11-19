@@ -30,4 +30,5 @@ ENV/
 *.swo
 config/config.json
 models/
+data/
 
