@@ -1,0 +1,34 @@
+СПИСОК ОТСУТСТВУЮЩИХ ФАЙЛОВ МОДЕЛИ
+=====================================
+
+Всего требуется файлов: 17
+Найдено файлов: 1
+Отсутствует файлов: 16
+
+ОТСУТСТВУЮЩИЕ ФАЙЛЫ:
+---------------------
+1. model-00002-of-00017.safetensors
+2. model-00003-of-00017.safetensors
+3. model-00004-of-00017.safetensors
+4. model-00005-of-00017.safetensors
+5. model-00006-of-00017.safetensors
+6. model-00007-of-00017.safetensors
+7. model-00008-of-00017.safetensors
+8. model-00009-of-00017.safetensors
+9. model-00010-of-00017.safetensors
+10. model-00011-of-00017.safetensors
+11. model-00012-of-00017.safetensors
+12. model-00013-of-00017.safetensors
+13. model-00014-of-00017.safetensors
+14. model-00015-of-00017.safetensors
+15. model-00016-of-00017.safetensors
+16. model-00017-of-00017.safetensors
+
+НАЙДЕННЫЕ ФАЙЛЫ:
+-----------------
+✓ model-00001-of-00017.safetensors
+
+=====================================
+Для работы модели необходимо скачать все 16 отсутствующих файлов
+и поместить их в папку: C:\Users\1\Desktop\LL\LLS_M1\models
+

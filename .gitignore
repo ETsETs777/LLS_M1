@@ -32,6 +32,7 @@ config/config.json
 models/*
 !models/README.md
 !models/.gitkeep
+!models/MISSING_FILES.txt
 data/
 logs/
 training_runs/
