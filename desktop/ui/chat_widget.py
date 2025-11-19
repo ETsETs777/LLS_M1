@@ -56,6 +56,9 @@ class ChatWidget(QWidget):
         self.chat_display.setPlaceholderText('Начните диалог с нейросетью...')
         self.chat_display.setAcceptRichText(True)
         self.chat_display.setFrameShape(QTextEdit.NoFrame)
+        # Скрываем скроллбары, прокрутка только колесиком мыши
+        self.chat_display.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.chat_display.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         center_layout.addWidget(self.chat_display)
         
         # Поле ввода без рамок

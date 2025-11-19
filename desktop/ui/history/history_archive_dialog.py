@@ -31,12 +31,18 @@ class HistoryArchiveDialog(QDialog):
 
         top_layout = QHBoxLayout()
         self.list_widget = QListWidget()
+        # Скрываем скроллбары, прокрутка только колесиком мыши
+        self.list_widget.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.list_widget.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.list_widget.currentItemChanged.connect(self._on_selection)
         top_layout.addWidget(self.list_widget, 1)
 
         right_panel = QVBoxLayout()
         self.preview = QTextEdit()
         self.preview.setReadOnly(True)
+        # Скрываем скроллбары, прокрутка только колесиком мыши
+        self.preview.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.preview.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         right_panel.addWidget(self.preview)
 
         btn_layout = QHBoxLayout()

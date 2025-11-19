@@ -14,6 +14,7 @@ from PyQt5.QtWidgets import (
     QMessageBox
 )
 from PyQt5.QtCore import Qt, QDate
+from PyQt5.QtWidgets import QScrollBar
 
 from desktop.history.manager import HistoryManager
 
@@ -66,6 +67,9 @@ class HistoryDialog(QDialog):
         layout.addLayout(filter_layout)
 
         self.history_list = QListWidget()
+        # Скрываем скроллбары, прокрутка только колесиком мыши
+        self.history_list.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.history_list.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         layout.addWidget(self.history_list)
 
         buttons_layout = QHBoxLayout()
