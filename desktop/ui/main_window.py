@@ -63,11 +63,11 @@ class MainWindow(QMainWindow):
         self.init_ui()
         self.load_window_state()
         self.apply_theme(self.settings.get_theme())
+        self.statistics_dialog = None
         self.monitor_timer.start(5000)
         self.training_timer.start(10000)
         self._update_training_status_label()
         self._update_dashboard_metrics()
-        self.statistics_dialog = None
         
     def init_ui(self):
         self.setWindowTitle('Нейросеть Чат')
