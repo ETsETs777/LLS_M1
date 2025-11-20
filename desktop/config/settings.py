@@ -1,29 +1,125 @@
+"""
+Менеджер настроек приложения.
+Управляет загрузкой, сохранением и валидацией конфигурации.
+"""
 import json
 import os
-from typing import Dict, Any
+import shutil
+from typing import Dict, Any, Optional
+
+from desktop.utils.logger import get_logger
+from desktop.utils.constants import CONFIG_INDENT, CONFIG_ENSURE_ASCII
+
+logger = get_logger('desktop.config.settings')
+
+
+class SettingsError(Exception):
+    """Исключение для ошибок настроек."""
+    pass
 
 
 class Settings:
     def __init__(self):
+        """
+        Инициализирует менеджер настроек.
+        
+        Raises:
+            SettingsError: При критических ошибках загрузки конфигурации
+        """
         base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
         self.config_dir = os.path.join(base_dir, 'config')
         self.config_file = os.path.join(self.config_dir, 'config.json')
+        self.backup_file = os.path.join(self.config_dir, 'config.json.backup')
+        self._save_pending = False
+        self._save_timer = None
+        self._cache = {}  # Кэш для часто используемых значений
         self.ensure_config_dir()
         self.load_config()
         
-    def ensure_config_dir(self):
+    def ensure_config_dir(self) -> None:
+        """Создает директорию конфигурации, если она не существует."""
         if not os.path.exists(self.config_dir):
             os.makedirs(self.config_dir)
+            logger.info(f"Создана директория конфигурации: {self.config_dir}")
             
-    def load_config(self):
+    def load_config(self) -> None:
+        """
+        Загружает конфигурацию из файла.
+        
+        При ошибках пытается восстановить из резервной копии или создает новую.
+        
+        Raises:
+            SettingsError: Если не удалось загрузить или восстановить конфигурацию
+        """
         if os.path.exists(self.config_file):
-            with open(self.config_file, 'r', encoding='utf-8') as f:
-                self.config = json.load(f)
+            try:
+                with open(self.config_file, 'r', encoding='utf-8') as f:
+                    self.config = json.load(f)
+                logger.debug("Конфигурация успешно загружена")
+                # Валидируем загруженную конфигурацию
+                self._validate_config()
+            except json.JSONDecodeError as e:
+                logger.error(f"Ошибка парсинга JSON в конфигурации: {e}")
+                if self._restore_from_backup():
+                    logger.info("Конфигурация восстановлена из резервной копии")
+                else:
+                    logger.warning("Создана новая конфигурация по умолчанию")
+                    self.config = self.default_config()
+                    self.save_config()
+            except Exception as e:
+                logger.exception(f"Неожиданная ошибка при загрузке конфигурации: {e}")
+                if self._restore_from_backup():
+                    logger.info("Конфигурация восстановлена из резервной копии")
+                else:
+                    raise SettingsError(f"Не удалось загрузить конфигурацию: {e}")
         else:
+            logger.info("Файл конфигурации не найден, создается конфигурация по умолчанию")
             self.config = self.default_config()
             self.save_config()
+    
+    def _validate_config(self) -> None:
+        """
+        Валидирует структуру конфигурации.
+        
+        Raises:
+            SettingsError: Если конфигурация невалидна
+        """
+        if not isinstance(self.config, dict):
+            raise SettingsError("Конфигурация должна быть словарем")
+        
+        # Проверяем наличие обязательных ключей
+        required_keys = ['model_path', 'theme', 'prompt', 'generation']
+        missing_keys = [key for key in required_keys if key not in self.config]
+        if missing_keys:
+            logger.warning(f"Отсутствуют ключи в конфигурации: {missing_keys}")
+            # Восстанавливаем недостающие ключи из дефолтной конфигурации
+            defaults = self.default_config()
+            for key in missing_keys:
+                self.config[key] = defaults[key]
+            self.save_config()
+    
+    def _restore_from_backup(self) -> bool:
+        """
+        Пытается восстановить конфигурацию из резервной копии.
+        
+        Returns:
+            True если восстановление успешно, False иначе
+        """
+        if os.path.exists(self.backup_file):
+            try:
+                with open(self.backup_file, 'r', encoding='utf-8') as f:
+                    self.config = json.load(f)
+                self._validate_config()
+                # Сохраняем восстановленную конфигурацию
+                self.save_config()
+                return True
+            except Exception as e:
+                logger.error(f"Ошибка при восстановлении из резервной копии: {e}")
+        return False
 
-    def reload(self):
+    def reload(self) -> None:
+        """Перезагружает конфигурацию из файла."""
+        logger.debug("Перезагрузка конфигурации")
         self.load_config()
             
     def default_config(self) -> Dict[str, Any]:
@@ -92,9 +188,62 @@ class Settings:
             'current_user_id': None
         }
             
-    def save_config(self):
-        with open(self.config_file, 'w', encoding='utf-8') as f:
-            json.dump(self.config, f, ensure_ascii=False, indent=2)
+    def save_config(self, immediate: bool = False) -> None:
+        """
+        Сохраняет конфигурацию в файл.
+        
+        Использует батчинг для уменьшения количества операций записи.
+        
+        Args:
+            immediate: Если True, сохраняет немедленно, иначе использует батчинг
+        
+        Raises:
+            SettingsError: При ошибках сохранения
+        """
+        if immediate:
+            self._do_save()
+        else:
+            # Батчинг: откладываем сохранение
+            self._save_pending = True
+            if self._save_timer is None:
+                from PyQt5.QtCore import QTimer
+                self._save_timer = QTimer()
+                self._save_timer.setSingleShot(True)
+                self._save_timer.timeout.connect(self._do_save)
+                self._save_timer.start(500)  # Сохраняем через 500мс после последнего изменения
+            else:
+                # Перезапускаем таймер
+                self._save_timer.stop()
+                self._save_timer.start(500)
+    
+    def _do_save(self) -> None:
+        """
+        Выполняет фактическое сохранение конфигурации.
+        
+        Raises:
+            SettingsError: При ошибках сохранения
+        """
+        if not self._save_pending:
+            return
+        
+        try:
+            # Создаем резервную копию перед сохранением
+            if os.path.exists(self.config_file):
+                try:
+                    shutil.copy2(self.config_file, self.backup_file)
+                    logger.debug("Создана резервная копия конфигурации")
+                except Exception as e:
+                    logger.warning(f"Не удалось создать резервную копию: {e}")
+            
+            # Сохраняем конфигурацию
+            with open(self.config_file, 'w', encoding='utf-8') as f:
+                json.dump(self.config, f, ensure_ascii=CONFIG_ENSURE_ASCII, indent=CONFIG_INDENT)
+            logger.debug("Конфигурация сохранена")
+            self._save_pending = False
+            self._cache.clear()  # Очищаем кэш при сохранении
+        except Exception as e:
+            logger.exception(f"Ошибка при сохранении конфигурации: {e}")
+            raise SettingsError(f"Не удалось сохранить конфигурацию: {e}")
             
     def get_model_path(self) -> str:
         return self.config.get('model_path') or self.default_config()['model_path']
@@ -113,10 +262,16 @@ class Settings:
         return path
         
     def get_theme(self) -> str:
-        return self.config.get('theme', 'light')
+        """Возвращает текущую тему с использованием кэша."""
+        cache_key = 'theme'
+        if cache_key not in self._cache:
+            self._cache[cache_key] = self.config.get('theme', 'light')
+        return self._cache[cache_key]
         
-    def set_theme(self, theme: str):
+    def set_theme(self, theme: str) -> None:
+        """Устанавливает тему."""
         self.config['theme'] = theme
+        self._cache['theme'] = theme  # Обновляем кэш
         self.save_config()
 
     def get_generation_config(self) -> Dict[str, Any]:
@@ -243,6 +398,7 @@ class Settings:
         self.config['current_user_id'] = user_id
         self.save_config()
 
-    def get_current_user_id(self) -> Any:
+    def get_current_user_id(self) -> Optional[int]:
+        """Возвращает ID текущего пользователя."""
         return self.config.get('current_user_id')
 

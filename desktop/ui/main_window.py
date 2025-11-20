@@ -28,6 +28,13 @@ from desktop.shortcuts.actions import QuickActionsManager, QuickAction
 from desktop.shortcuts.quick_actions_dialog import QuickActionsDialog
 from desktop.ui.dashboard.statistics_dialog import StatisticsDialog
 from desktop.ui.monitoring.monitor_dialog import MonitorDialog
+from desktop.utils.logger import get_logger
+from desktop.utils.constants import (
+    MONITOR_UPDATE_INTERVAL, TRAINING_STATUS_UPDATE_INTERVAL,
+    VRAM_WARNING_THRESHOLD
+)
+
+logger = get_logger('desktop.ui.main_window')
 
 class MainWindow(QMainWindow):
     def __init__(self, settings: Optional[Settings] = None, user_repository=None):
@@ -55,7 +62,7 @@ class MainWindow(QMainWindow):
         self.current_user = None
         self.current_user_role = 'user'
         self._load_current_user()
-        self.vram_warning_threshold = 0.9
+        self.vram_warning_threshold = VRAM_WARNING_THRESHOLD
         self.vram_warning_shown = False
         self.monitor_timer = QTimer(self)
         self.monitor_timer.timeout.connect(self.refresh_metrics)
@@ -65,8 +72,9 @@ class MainWindow(QMainWindow):
         self.load_window_state()
         self.apply_theme(self.settings.get_theme())
         self.statistics_dialog = None
-        self.monitor_timer.start(5000)
-        self.training_timer.start(10000)
+        self.monitor_timer.start(MONITOR_UPDATE_INTERVAL)
+        self.training_timer.start(TRAINING_STATUS_UPDATE_INTERVAL)
+        logger.info("MainWindow инициализирован")
         self._update_training_status_label()
         self._update_dashboard_metrics()
         
@@ -268,7 +276,42 @@ class MainWindow(QMainWindow):
         self.settings.save_config()
         
     def closeEvent(self, event):
+        """
+        Обработчик события закрытия окна.
+        
+        Выполняет очистку ресурсов перед закрытием.
+        """
+        from desktop.utils.logger import get_logger
+        logger = get_logger('desktop.ui.main_window')
+        logger.info("Закрытие приложения")
+        
+        # Останавливаем таймеры
+        if self.monitor_timer.isActive():
+            self.monitor_timer.stop()
+        if self.training_timer.isActive():
+            self.training_timer.stop()
+        
+        # Очищаем ресурсы чата
+        if hasattr(self, 'chat_widget') and self.chat_widget:
+            self.chat_widget.cleanup()
+        
+        # Освобождаем GPU память, если используется
+        try:
+            if hasattr(self, 'neural_network') and self.neural_network:
+                model_manager = getattr(self.neural_network, 'model_manager', None)
+                if model_manager and model_manager.model is not None:
+                    import torch
+                    if torch.cuda.is_available() and model_manager.device.type == 'cuda':
+                        del model_manager.model
+                        torch.cuda.empty_cache()
+                        logger.info("GPU память освобождена")
+        except Exception as e:
+            logger.warning(f"Ошибка при освобождении GPU памяти: {e}")
+        
+        # Сохраняем состояние окна
         self.save_window_state()
+        
+        logger.info("Приложение закрыто")
         event.accept()
 
     def open_settings(self):
@@ -415,21 +458,31 @@ class MainWindow(QMainWindow):
         dialog = BackupDialog(self.backup_manager, self)
         dialog.exec_()
 
-    def _check_vram(self, metrics):
+    def _check_vram(self, metrics: Dict[str, Any]) -> None:
+        """
+        Проверяет использование VRAM и показывает предупреждение при необходимости.
+        
+        Args:
+            metrics: Словарь с метриками системы
+        """
+        from desktop.utils.constants import VRAM_WARNING_RESET_THRESHOLD
+        
         total = metrics.get('gpu_memory_total')
         used = metrics.get('gpu_memory_used')
         if not total or not used:
             self.vram_warning_shown = False
             return
+        
         ratio = used / total if total else 0
         if ratio >= self.vram_warning_threshold and not self.vram_warning_shown:
+            logger.warning(f"Высокое использование VRAM: {ratio:.1%}")
             QMessageBox.warning(
                 self,
                 'Внимание: мало VRAM',
-                'Память GPU почти заполнена. Снизьте параметры генерации или перезагрузите модель.'
+                f'Память GPU почти заполнена ({ratio:.1%}). Снизьте параметры генерации или перезагрузите модель.'
             )
             self.vram_warning_shown = True
-        elif ratio < self.vram_warning_threshold - 0.1:
+        elif ratio < VRAM_WARNING_RESET_THRESHOLD:
             self.vram_warning_shown = False
 
     def _refresh_plugin_manager(self):

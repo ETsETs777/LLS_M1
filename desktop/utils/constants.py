@@ -1,0 +1,67 @@
+"""
+Константы приложения.
+Содержит все магические числа и строки, используемые в приложении.
+"""
+
+# Ограничения ввода
+MAX_MESSAGE_LENGTH = 10000
+MAX_TAG_LENGTH = 50
+MAX_TAGS_COUNT = 10
+
+# Интервалы таймеров (в миллисекундах)
+MONITOR_UPDATE_INTERVAL = 5000  # 5 секунд
+TRAINING_STATUS_UPDATE_INTERVAL = 10000  # 10 секунд
+LOADING_INDICATOR_INTERVAL = 500  # 0.5 секунды
+
+# Пороги предупреждений
+VRAM_WARNING_THRESHOLD = 0.9  # 90% использования VRAM
+VRAM_WARNING_RESET_THRESHOLD = 0.8  # 80% для сброса предупреждения
+
+# Размеры UI элементов
+ICON_BUTTON_SIZE = 32
+SEND_BUTTON_WIDTH = 100
+SEND_BUTTON_HEIGHT = 32
+TAG_BUTTON_WIDTH = 70
+TAG_BUTTON_HEIGHT = 32
+
+# Цвета
+COLOR_ACCENT = '#0078d4'
+COLOR_ACCENT_HOVER = '#106ebe'
+COLOR_ACCENT_PRESSED = '#005a9e'
+COLOR_SUCCESS = '#28a745'
+COLOR_ERROR = '#dc3545'
+COLOR_ERROR_DARK = '#c62828'
+COLOR_TEXT_LIGHT = '#000000'
+COLOR_TEXT_DARK = '#ffffff'
+COLOR_TEXT_SECONDARY = '#999999'
+COLOR_TEXT_SECONDARY_DARK = '#cccccc'
+
+# Стили
+BORDER_RADIUS = 16
+INPUT_PADDING = 8
+CHAT_PADDING = 10
+FONT_SIZE_NORMAL = 14
+FONT_SIZE_SMALL = 12
+FONT_SIZE_TINY = 13
+
+# История чата
+FALLBACK_HISTORY_LIMIT = 5
+MAX_HISTORY_ITEMS_PREVIEW = 3
+
+# Модель
+DEFAULT_MAX_NEW_TOKENS = 200
+DEFAULT_TEMPERATURE = 0.8
+DEFAULT_TOP_P = 0.95
+DEFAULT_REPETITION_PENALTY = 1.05
+
+# Логирование
+LOG_FILE_MAX_SIZE = 10 * 1024 * 1024  # 10MB
+LOG_BACKUP_COUNT = 5
+
+# Конфигурация
+CONFIG_INDENT = 2
+CONFIG_ENSURE_ASCII = False
+
+# Безопасность
+MAX_PATH_DEPTH = 100  # Максимальная глубина пути для защиты от path traversal
+

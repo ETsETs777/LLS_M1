@@ -1,3 +1,4 @@
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
@@ -18,22 +19,54 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+
+# Virtual environments
 venv/
 env/
 ENV/
-.venv
-*.log
-.DS_Store
+
+# IDE
 .vscode/
 .idea/
 *.swp
 *.swo
-config/config.json
-models/*
-!models/README.md
-!models/.gitkeep
-!models/MISSING_FILES.txt
-data/
-logs/
-training_runs/
+*~
 
+# Logs
+logs/*.log
+logs/*.log.*
+
+# Config backups
+config/*.backup
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Model files (large)
+models/*.safetensors
+models/*.bin
+models/*.pt
+models/*.pth
+
+# Data
+data/backups/*
+data/exports/*
+data/archives/*
+!data/backups/.gitkeep
+!data/exports/.gitkeep
+!data/archives/.gitkeep
+
+# Tests
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Training
+training_runs/
+*.ckpt
