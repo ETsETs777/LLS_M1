@@ -26,12 +26,13 @@ class ReportBuilder:
 
     def _markdown(self, payload: Dict[str, Any]) -> str:
         lines = [
-            f"
-            "
+            f"# Отчет об обучении\n",
+            f"**Время:** {payload['timestamp']}\n",
+            f"\n## Метрики\n"
         ]
         for key, value in payload['metrics'].items():
             lines.append(f"- {key}: {value}")
-        lines.append("
+        lines.append("\n## Конфигурация\n")
         for key, value in payload['config'].items():
             lines.append(f"- {key}: {value}")
         return '\n'.join(lines)

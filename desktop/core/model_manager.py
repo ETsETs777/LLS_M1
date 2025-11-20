@@ -93,14 +93,19 @@ class ModelManager:
             total_memory_gb = psutil.virtual_memory().total / (1024**3)
             logger.info(f"Проверка памяти: {available_memory_gb:.2f} GB доступно из {total_memory_gb:.2f} GB")
             
-            # Для модели ~20B параметров в float16 нужно минимум ~40GB
-            # Но с оффлоадингом на диск можно работать и с меньшей памятью
-            min_required_gb = 8.0  # Минимум для работы с оффлоадингом
+            # Для модели ~20B параметров в float16 нужно минимум ~40GB в памяти
+            # С оффлоадингом на диск можно работать с минимальной памятью (4GB для системы + буферы)
+            # Снижаем требования до минимума для работы с оффлоадингом
+            min_required_gb = 4.0  # Минимум для работы с оффлоадингом (4GB для системы + буферы)
             if available_memory_gb < min_required_gb:
                 return {
                     'valid': False,
-                    'error': f'Недостаточно памяти. Доступно: {available_memory_gb:.2f} GB, требуется минимум: {min_required_gb} GB. Рекомендуется закрыть другие приложения.'
+                    'error': f'Недостаточно памяти. Доступно: {available_memory_gb:.2f} GB, требуется минимум: {min_required_gb} GB для работы с оффлоадингом на диск. Закройте другие приложения.'
                 }
+            else:
+                # Предупреждаем, что работа будет медленной, если памяти мало
+                if available_memory_gb < 8.0:
+                    logger.warning(f"Мало доступной памяти ({available_memory_gb:.2f} GB). Загрузка модели будет очень медленной с оффлоадингом на диск.")
         except Exception as e:
             logger.warning(f"Не удалось проверить память: {e}")
         index_file = os.path.join(resolved_path, 'model.safetensors.index.json')
@@ -166,7 +171,7 @@ class ModelManager:
             logger.info(f"Доступная память: {available_memory_gb:.2f} GB из {total_memory_gb:.2f} GB")
             
             # Для модели ~20B параметров в float16 нужно ~40GB
-            # С оффлоадингом можно работать с меньшей памятью, но медленно
+            # С оффлоадингом можно работать с меньшей памятью (минимум 4GB для системы)
             # Рекомендуем использовать float16 и оффлоадинг на диск
             dtype = torch.float16
             device_map = 'auto' if torch.cuda.is_available() else 'cpu'
@@ -174,25 +179,17 @@ class ModelManager:
             # Параметры для экономии памяти
             load_kwargs = {
                 'trust_remote_code': True,
-                'torch_dtype': dtype,
+                'dtype': dtype,  # Используем dtype вместо устаревшего torch_dtype
                 'low_cpu_mem_usage': True,  # Критично для экономии памяти
             }
             
             if not torch.cuda.is_available():
-                # Для CPU: обязательный оффлоадинг на диск для больших моделей
-                offload_folder = os.path.join(os.path.dirname(resolved_path), '.model_offload')
-                os.makedirs(offload_folder, exist_ok=True)
-                load_kwargs['device_map'] = 'cpu'
-                load_kwargs['offload_folder'] = offload_folder
-                
-                # Ограничиваем использование памяти (оставляем запас для системы)
-                max_memory_gb = max(4, int(available_memory_gb * 0.75))  # Минимум 4GB, максимум 75% доступной
-                load_kwargs['max_memory'] = {'cpu': f'{max_memory_gb}GB'}
-                
-                logger.warning(f"ВНИМАНИЕ: Модель очень большая (~82GB). Используется оффлоадинг на диск.")
-                logger.warning(f"Это может работать МЕДЛЕННО. Рекомендуется минимум 32GB RAM для комфортной работы.")
-                logger.info(f"Оффлоадинг на диск: {offload_folder}")
-                logger.info(f"Максимальная память для модели: {max_memory_gb} GB")
+                # Для CPU: не используем device_map и offload_folder, 
+                # позволяем transformers самому управлять загрузкой с low_cpu_mem_usage
+                # Это может быть медленно, но более надежно
+                logger.warning(f"ВНИМАНИЕ: Модель очень большая (~82GB). Загрузка на CPU может быть очень медленной.")
+                logger.warning(f"Рекомендуется минимум 32GB RAM для комфортной работы.")
+                logger.info("Используется low_cpu_mem_usage для минимизации использования памяти.")
             else:
                 load_kwargs['device_map'] = device_map
             
