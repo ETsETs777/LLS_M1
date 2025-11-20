@@ -216,7 +216,6 @@ class MainWindow(QMainWindow):
             self.settings_button.setIcon(QIcon(icon_path))
             self.settings_button.setIconSize(self.settings_button.size())
         
-        self.settings_button.setStyleSheet()
         settings_layout.addWidget(self.settings_button)
         settings_widget.setLayout(settings_layout)
         self.menuBar().setCornerWidget(settings_widget, Qt.TopRightCorner)
