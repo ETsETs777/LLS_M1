@@ -15,6 +15,8 @@ import datetime
 from desktop.core.neural_network import NeuralNetwork
 from desktop.utils.chat_history import ChatHistory
 from desktop.utils.logger import get_logger
+from desktop.utils.metrics import get_metrics_collector
+from desktop.utils.draft_manager import DraftManager
 from desktop.utils.constants import (
     MAX_MESSAGE_LENGTH, MAX_TAG_LENGTH, MAX_TAGS_COUNT,
     LOADING_INDICATOR_INTERVAL, ICON_BUTTON_SIZE,
@@ -53,6 +55,7 @@ class ResponseThread(QThread):
         self.neural_network = neural_network
         self.user_input = user_input
         self._is_cancelled = False
+        self._start_time: Optional[float] = None
         
     def cancel(self) -> None:
         """Отменяет выполнение генерации."""
@@ -63,17 +66,28 @@ class ResponseThread(QThread):
         """Выполняет генерацию ответа в отдельном потоке."""
         if self._is_cancelled:
             return
+        
+        import time
+        metrics = get_metrics_collector()
+        self._start_time = time.time()
             
         try:
             logger.debug(f"Начало генерации ответа для сообщения длиной {len(self.user_input)}")
             response = self.neural_network.generate_response(self.user_input)
+            
             if not self._is_cancelled:
+                response_time = time.time() - self._start_time
+                metrics.record_response(response_time, success=True)
                 self.response_ready.emit(response)
-                logger.debug(f"Ответ успешно сгенерирован, длина: {len(response)}")
+                logger.debug(f"Ответ успешно сгенерирован за {response_time:.2f}с, длина: {len(response)}")
         except Exception as e:
+            error_msg = str(e)
             logger.exception(f"Ошибка при генерации ответа: {e}")
             if not self._is_cancelled:
-                self.error_occurred.emit(str(e))
+                if self._start_time:
+                    response_time = time.time() - self._start_time
+                    metrics.record_response(response_time, success=False, error=error_msg)
+                self.error_occurred.emit(error_msg)
 
 class ChatWidget(QWidget):
     """
@@ -99,8 +113,10 @@ class ChatWidget(QWidget):
         self.loading_timer.timeout.connect(self.update_loading_indicator)
         self.loading_dots = 0
         self.pending_tags: List[str] = []
+        self.draft_manager = DraftManager()
         self.init_ui()
         self.load_history()
+        self._load_draft()
         logger.debug("ChatWidget инициализирован")
         
     def init_ui(self):
@@ -286,6 +302,9 @@ class ChatWidget(QWidget):
         self.input_field.setEnabled(False)
         self.show_loading_indicator()
         
+        # Очищаем черновик после отправки
+        self.draft_manager.clear_draft()
+        
         self.response_thread = ResponseThread(self.neural_network, user_message)
         self.response_thread.response_ready.connect(self.on_response_received)
         self.response_thread.error_occurred.connect(self.on_error_occurred)
@@ -449,7 +468,23 @@ class ChatWidget(QWidget):
         self.tag_button.setStyleSheet(get_tag_button_style(theme))
         self.loading_label.setStyleSheet(get_loading_label_style(theme))
 
-    def _current_tags(self):
+    def _on_input_changed(self, text: str) -> None:
+        """Обработчик изменения текста в поле ввода (автосохранение черновика)."""
+        tags = self._current_tags()
+        self.draft_manager.save_draft(text, tags)
+    
+    def _load_draft(self) -> None:
+        """Загружает черновик при инициализации."""
+        message, tags = self.draft_manager.load_draft()
+        if message:
+            self.input_field.setText(message)
+            if tags:
+                self.tag_field.setText(', '.join(tags))
+                self.tag_field.setVisible(True)
+                self.tag_button.setChecked(True)
+    
+    def _current_tags(self) -> List[str]:
+        """Возвращает текущие теги из поля."""
         raw = self.tag_field.text().strip()
         if not raw:
             return []
