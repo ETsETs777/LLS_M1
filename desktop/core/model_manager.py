@@ -3,20 +3,32 @@ from typing import Dict, Any, Optional
 
 from desktop.utils.logger import get_logger
 
+# Импорт logger после проверки torch, чтобы избежать проблем с DLL
+TRANSFORMERS_AVAILABLE = False
+torch = None
+GenerationConfig = None
+GenerationMixin = object
+
 try:
+    # Пытаемся импортировать torch отдельно
     import torch
+    # Если torch импортирован успешно, пробуем transformers
     from transformers import AutoTokenizer, AutoModelForCausalLM, GenerationConfig
     from transformers.generation import GenerationMixin
     TRANSFORMERS_AVAILABLE = True
+except ImportError as e:
+    # Если модуль не найден - это нормально для fallback режима
+    pass
 except Exception as e:
-    torch = None
-    GenerationConfig = None
-    GenerationMixin = object
-    TRANSFORMERS_AVAILABLE = False
-    logger = get_logger('desktop.core.model_manager')
-    logger.warning(f"Transformers недоступны: {e}")
+    # Другие ошибки (включая DLL ошибки) - логируем, но продолжаем работу
+    pass
 
+# Создаем logger после попытки импорта
 logger = get_logger('desktop.core.model_manager')
+
+if not TRANSFORMERS_AVAILABLE:
+    logger.warning(f"Transformers недоступны - приложение будет работать в fallback режиме. "
+                   f"Модель не будет загружаться до решения проблемы с torch/transformers.")
 
 
 class ModelManager:
