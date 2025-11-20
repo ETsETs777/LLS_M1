@@ -12,16 +12,14 @@ class UserRepository:
 
     def _ensure_table(self):
         self.db.execute(
-            """
-            CREATE TABLE IF NOT EXISTS users (
+            """CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 full_name TEXT NOT NULL,
-                email TEXT NOT NULL,
+                email TEXT NOT NULL UNIQUE,
                 organization TEXT NOT NULL,
                 role TEXT NOT NULL DEFAULT 'user',
                 created_at TEXT NOT NULL
-            )
-            """,
+            )""",
             commit=True
         )
 
@@ -32,10 +30,7 @@ class UserRepository:
 
     def add_user(self, full_name: str, email: str, organization: str, role: str) -> int:
         cursor = self.db.execute(
-            """
-            INSERT INTO users (full_name, email, organization, role, created_at)
-            VALUES (?, ?, ?, ?, ?)
-            """,
+            "INSERT INTO users (full_name, email, organization, role, created_at) VALUES (?, ?, ?, ?, ?)",
             (full_name, email, organization, role, datetime.utcnow().isoformat()),
             commit=True
         )

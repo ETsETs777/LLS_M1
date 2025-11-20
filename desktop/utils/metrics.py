@@ -1,6 +1,4 @@
-"""
-Модуль для сбора и хранения метрик производительности.
-"""
+
 import time
 from typing import Dict, List, Optional
 from collections import deque
@@ -12,19 +10,10 @@ logger = get_logger('desktop.utils.metrics')
 
 
 class MetricsCollector:
-    """
-    Сборщик метрик производительности приложения.
     
-    Отслеживает время ответа модели, успешность запросов и другие метрики.
-    """
     
     def __init__(self, max_history: int = 100):
-        """
-        Инициализирует сборщик метрик.
         
-        Args:
-            max_history: Максимальное количество записей в истории
-        """
         self.max_history = max_history
         self.response_times: deque = deque(maxlen=max_history)
         self.successful_requests: int = 0
@@ -34,14 +23,7 @@ class MetricsCollector:
     
     def record_response(self, response_time: float, success: bool = True, 
                        error: Optional[str] = None) -> None:
-        """
-        Записывает метрику ответа модели.
         
-        Args:
-            response_time: Время ответа в секундах
-            success: Успешность запроса
-            error: Сообщение об ошибке (если есть)
-        """
         timestamp = datetime.now().isoformat()
         metric = {
             'timestamp': timestamp,
@@ -64,12 +46,7 @@ class MetricsCollector:
                 logger.warning(f"Запрос завершился с ошибкой: {error}")
     
     def get_stats(self) -> Dict:
-        """
-        Возвращает статистику метрик.
         
-        Returns:
-            Словарь со статистикой
-        """
         if not self.response_times:
             return {
                 'total_requests': 0,
@@ -97,7 +74,7 @@ class MetricsCollector:
         }
     
     def reset(self) -> None:
-        """Сбрасывает все метрики."""
+        
         self.response_times.clear()
         self.successful_requests = 0
         self.failed_requests = 0
@@ -106,19 +83,14 @@ class MetricsCollector:
         logger.info("Метрики сброшены")
 
 
-# Глобальный экземпляр сборщика метрик
 _metrics_collector: Optional[MetricsCollector] = None
 
 
 def get_metrics_collector() -> MetricsCollector:
-    """
-    Получить глобальный экземпляр сборщика метрик.
     
-    Returns:
-        Экземпляр MetricsCollector
-    """
     global _metrics_collector
     if _metrics_collector is None:
         _metrics_collector = MetricsCollector()
     return _metrics_collector
+
 

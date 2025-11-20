@@ -1,6 +1,4 @@
-"""
-Менеджер черновиков для автосохранения незавершенных сообщений.
-"""
+
 import json
 import os
 from typing import Optional
@@ -12,17 +10,10 @@ logger = get_logger('desktop.utils.draft_manager')
 
 
 class DraftManager:
-    """
-    Менеджер для сохранения и восстановления черновиков сообщений.
-    """
+    
     
     def __init__(self, draft_file: Optional[str] = None):
-        """
-        Инициализирует менеджер черновиков.
         
-        Args:
-            draft_file: Путь к файлу черновиков (по умолчанию в data/drafts.json)
-        """
         if draft_file is None:
             base_dir = Path(__file__).parent.parent.parent
             draft_file = base_dir / 'data' / 'drafts.json'
@@ -33,13 +24,7 @@ class DraftManager:
         self._tags: list = []
     
     def save_draft(self, message: str, tags: Optional[list] = None) -> None:
-        """
-        Сохраняет черновик сообщения.
         
-        Args:
-            message: Текст сообщения
-            tags: Список тегов (опционально)
-        """
         try:
             self._draft = message
             self._tags = tags or []
@@ -47,7 +32,7 @@ class DraftManager:
             data = {
                 'message': message,
                 'tags': self._tags,
-                'timestamp': None  # Можно добавить timestamp
+                'timestamp': None
             }
             
             with open(self.draft_file, 'w', encoding='utf-8') as f:
@@ -58,12 +43,7 @@ class DraftManager:
             logger.warning(f"Не удалось сохранить черновик: {e}")
     
     def load_draft(self) -> tuple[Optional[str], list]:
-        """
-        Загружает черновик сообщения.
         
-        Returns:
-            Кортеж (сообщение, теги) или (None, []) если черновика нет
-        """
         try:
             if not self.draft_file.exists():
                 return None, []
@@ -84,7 +64,7 @@ class DraftManager:
             return None, []
     
     def clear_draft(self) -> None:
-        """Очищает черновик."""
+        
         try:
             if self.draft_file.exists():
                 self.draft_file.unlink()
@@ -95,11 +75,7 @@ class DraftManager:
             logger.warning(f"Не удалось очистить черновик: {e}")
     
     def has_draft(self) -> bool:
-        """
-        Проверяет наличие черновика.
         
-        Returns:
-            True если есть черновик, False иначе
-        """
         return self.draft_file.exists() and self._draft is not None
+
 

@@ -16,38 +16,19 @@ class StatisticsDialog(QDialog):
         layout.setSpacing(15)
         self.setLayout(layout)
         
-        # Заголовок
         title_label = QLabel('Статистика приложения')
         title_label.setStyleSheet('font-size: 20px; font-weight: bold; margin-bottom: 10px;')
         layout.addWidget(title_label)
         
-        # Dashboard виджет
         self.dashboard = DashboardWidget(self)
         layout.addWidget(self.dashboard)
         
-        # Кнопка закрытия
         button_layout = QHBoxLayout()
         button_layout.addStretch()
         close_button = QPushButton('Закрыть')
         close_button.setFixedHeight(36)
         close_button.setFixedWidth(100)
-        close_button.setStyleSheet("""
-            QPushButton {
-                background-color: #0078d4;
-                color: white;
-                border: none;
-                border-radius: 18px;
-                padding: 8px 16px;
-                font-size: 14px;
-                font-weight: 500;
-            }
-            QPushButton:hover {
-                background-color: #106ebe;
-            }
-            QPushButton:pressed {
-                background-color: #005a9e;
-            }
-        """)
+        close_button.setStyleSheet()
         close_button.clicked.connect(self.accept)
         button_layout.addWidget(close_button)
         layout.addLayout(button_layout)
@@ -55,7 +36,7 @@ class StatisticsDialog(QDialog):
     def update_statistics(self, sessions: str, messages: str, plugins: str, training: str, 
                          sessions_subtitle: str = '', messages_subtitle: str = '', 
                          analytics_lines: List[str] = None):
-        """Обновляет статистику в диалоге"""
+        
         self.dashboard.update_card('sessions', sessions, sessions_subtitle)
         self.dashboard.update_card('messages', messages, messages_subtitle)
         self.dashboard.update_card('active_plugins', plugins)

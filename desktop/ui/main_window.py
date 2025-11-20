@@ -92,13 +92,11 @@ class MainWindow(QMainWindow):
         self.chat_widget = ChatWidget(self.neural_network, self)
         layout.addWidget(self.chat_widget)
         
-        # Подключаем обработчики для кнопок в chat_widget
         self.chat_widget.theme_button.clicked.connect(self.toggle_theme)
         self.chat_widget.clear_button.clicked.connect(self.chat_widget.clear_chat)
         self.chat_widget.history_button.clicked.connect(self.open_history)
         self.chat_widget.statistics_button.clicked.connect(self.open_statistics)
         
-        # Создаем меню для кнопки действий в chat_widget
         chat_actions_menu = QMenu(self)
         chat_history_action = chat_actions_menu.addAction('📚 Открыть историю')
         chat_history_action.triggered.connect(self.open_history)
@@ -203,7 +201,7 @@ class MainWindow(QMainWindow):
         self._update_role_dependent_actions()
         
     def create_top_settings_button(self):
-        """Создает кнопку настроек в правом верхнем углу"""
+        
         settings_widget = QWidget()
         settings_layout = QHBoxLayout()
         settings_layout.setContentsMargins(0, 0, 10, 0)
@@ -213,30 +211,14 @@ class MainWindow(QMainWindow):
         self.settings_button.setFixedSize(36, 36)
         self.settings_button.setToolTip('Настройки')
         
-        # Устанавливаем иконку
         icon_path = os.path.join(os.path.dirname(__file__), 'images', 'settings.png')
         if os.path.exists(icon_path):
             self.settings_button.setIcon(QIcon(icon_path))
             self.settings_button.setIconSize(self.settings_button.size())
         
-        self.settings_button.setStyleSheet("""
-            QPushButton {
-                background-color: #0078d4;
-                color: white;
-                border: none;
-                border-radius: 18px;
-                padding: 6px;
-            }
-            QPushButton:hover {
-                background-color: #106ebe;
-            }
-            QPushButton:pressed {
-                background-color: #005a9e;
-            }
-        """)
+        self.settings_button.setStyleSheet()
         settings_layout.addWidget(self.settings_button)
         settings_widget.setLayout(settings_layout)
-        # Добавляем в menuBar как виджет справа
         self.menuBar().setCornerWidget(settings_widget, Qt.TopRightCorner)
         
     def create_status_bar(self):
@@ -276,26 +258,19 @@ class MainWindow(QMainWindow):
         self.settings.save_config()
         
     def closeEvent(self, event):
-        """
-        Обработчик события закрытия окна.
         
-        Выполняет очистку ресурсов перед закрытием.
-        """
         from desktop.utils.logger import get_logger
         logger = get_logger('desktop.ui.main_window')
         logger.info("Закрытие приложения")
         
-        # Останавливаем таймеры
         if self.monitor_timer.isActive():
             self.monitor_timer.stop()
         if self.training_timer.isActive():
             self.training_timer.stop()
         
-        # Очищаем ресурсы чата
         if hasattr(self, 'chat_widget') and self.chat_widget:
             self.chat_widget.cleanup()
         
-        # Освобождаем GPU память, если используется
         try:
             if hasattr(self, 'neural_network') and self.neural_network:
                 model_manager = getattr(self.neural_network, 'model_manager', None)
@@ -308,7 +283,6 @@ class MainWindow(QMainWindow):
         except Exception as e:
             logger.warning(f"Ошибка при освобождении GPU памяти: {e}")
         
-        # Сохраняем состояние окна
         self.save_window_state()
         
         logger.info("Приложение закрыто")
@@ -370,10 +344,9 @@ class MainWindow(QMainWindow):
         dialog.exec_()
     
     def open_statistics(self):
-        """Открывает окно статистики"""
+        
         if self.statistics_dialog is None or not self.statistics_dialog.isVisible():
             self.statistics_dialog = StatisticsDialog(self)
-            # Обновляем статистику перед показом
             self._update_statistics_dialog()
             self.statistics_dialog.exec_()
         else:
@@ -381,7 +354,7 @@ class MainWindow(QMainWindow):
             self.statistics_dialog.activateWindow()
     
     def _update_statistics_dialog(self):
-        """Обновляет данные в окне статистики"""
+        
         if self.statistics_dialog is None or not self.statistics_dialog.isVisible():
             return
         
@@ -398,7 +371,7 @@ class MainWindow(QMainWindow):
             for tag in msg.get('tags', []):
                 tag_counter[tag] += 1
         top_tags = tag_counter.most_common(3)
-        analytics_lines = [f'#{tag}: {count}' for tag, count in top_tags] if top_tags else ['Нет данных по тегам']
+        analytics_lines = [f'{tag}: {count}' for tag, count in top_tags] if top_tags else []
         
         self.statistics_dialog.update_statistics(
             sessions=str(len(session_ids)),
@@ -445,7 +418,7 @@ class MainWindow(QMainWindow):
         self.status_panel.update_metrics(metrics)
         self._check_vram(metrics)
         self.status_bar.showMessage('Мониторинг обновлён')
-        self._update_dashboard_metrics()  # Обновляет статистику, если окно открыто
+        self._update_dashboard_metrics()
 
     def reload_model(self):
         try:
@@ -459,12 +432,7 @@ class MainWindow(QMainWindow):
         dialog.exec_()
 
     def _check_vram(self, metrics: Dict[str, Any]) -> None:
-        """
-        Проверяет использование VRAM и показывает предупреждение при необходимости.
         
-        Args:
-            metrics: Словарь с метриками системы
-        """
         from desktop.utils.constants import VRAM_WARNING_RESET_THRESHOLD
         
         total = metrics.get('gpu_memory_total')
@@ -598,8 +566,7 @@ class MainWindow(QMainWindow):
         QMessageBox.information(self, 'Температура обновлена', f'Новая температура: {temp}')
 
     def _update_dashboard_metrics(self):
-        """Обновляет метрики (теперь только для окна статистики)"""
-        # Обновляем окно статистики, если оно открыто
+        
         self._update_statistics_dialog()
 
     def _message_date(self, message: Dict) -> Optional[date]:

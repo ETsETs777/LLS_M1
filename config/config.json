@@ -1,0 +1,68 @@
+{
+  "model_path": "F:\\stops\\LLS_M1\\models",
+  "theme": "light",
+  "prompt": "Вы являетесь полезным русскоязычным ассистентом, отвечающим кратко и по делу.",
+  "generation": {
+    "max_new_tokens": 200,
+    "temperature": 0.8,
+    "top_p": 0.95,
+    "do_sample": true,
+    "repetition_penalty": 1.05
+  },
+  "presets": {},
+  "history": {
+    "export_dir": "F:\\stops\\LLS_M1\\data\\exports",
+    "retention_days": 90,
+    "default_tags": []
+  },
+  "training": {
+    "reports_dir": "F:\\stops\\LLS_M1\\data\\reports",
+    "runs_dir": "F:\\stops\\LLS_M1\\training_runs",
+    "status_file": "F:\\stops\\LLS_M1\\data\\reports\\training_status.json"
+  },
+  "appearance": {
+    "accent_color": "#0078d4"
+  },
+  "backup": {
+    "dir": "F:\\stops\\LLS_M1\\data\\backups"
+  },
+  "plugins": {
+    "enabled": [],
+    "available": {
+      "web_search": {
+        "module": "desktop.plugins.examples.web_search",
+        "class": "WebSearchPlugin",
+        "name": "Поиск в сети",
+        "description": "Стартовый плагин для интеграции веб-поиска.",
+        "config": {},
+        "allowed_roles": [
+          "admin"
+        ]
+      },
+      "knowledge_base": {
+        "module": "desktop.plugins.examples.knowledge_base",
+        "class": "KnowledgeBasePlugin",
+        "name": "База знаний",
+        "description": "Ответы на основе локальной коллекции статей.",
+        "config": {
+          "data_path": "F:\\stops\\LLS_M1\\desktop\\knowledge\\articles.json"
+        },
+        "allowed_roles": [
+          "analyst",
+          "admin"
+        ]
+      }
+    }
+  },
+  "updater": {
+    "auto_check": true,
+    "channel": "stable",
+    "verify_models_on_start": true
+  },
+  "database": {
+    "path": "F:\\stops\\LLS_M1\\data\\database\\app.db"
+  },
+  "current_user_id": null,
+  "window_geometry": "01d9d0cb0003000000000235000000980000059a0000036c00000236000000b7000005990000036b0000000000000000078000000236000000b7000005990000036b",
+  "window_state": "000000ff00000000fd00000000000003640000027b00000004000000040000000800000008fc000000010000000200000000"
+}

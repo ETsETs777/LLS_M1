@@ -2,9 +2,12 @@ import hashlib
 import json
 import os
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 from desktop.config.settings import Settings
+from desktop.utils.logger import get_logger
+
+logger = get_logger('desktop.updater.update_manager')
 
 
 class UpdateManager:
@@ -41,5 +44,34 @@ class UpdateManager:
             'status': 'pending',
             'details': f'Автообновление подключено к каналу {channel}. Реальная проверка будет добавлена после интеграции с сервером.'
         }
+    
+    def download_model_from_source(
+        self,
+        source: str,
+        source_type: str = 'huggingface',
+        progress_callback: Optional[callable] = None
+    ) -> Dict[str, Any]:
+        try:
+            from desktop.utils.model_downloader import ModelDownloader
+            
+            downloader = ModelDownloader()
+            result = downloader.download_model_files(
+                source=source,
+                source_type=source_type,
+                progress_callback=progress_callback
+            )
+            
+            if result['success']:
+                logger.info(f"Модель успешно загружена из {source_type}: {result.get('path')}")
+            else:
+                logger.error(f"Ошибка загрузки модели: {result.get('error')}")
+            
+            return result
+        except Exception as e:
+            logger.exception(f"Ошибка при загрузке модели: {e}")
+            return {
+                'success': False,
+                'error': str(e)
+            }
 
 

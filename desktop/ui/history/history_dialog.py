@@ -66,7 +66,6 @@ class HistoryDialog(QDialog):
         layout.addLayout(filter_layout)
 
         self.history_list = QListWidget()
-        # Скрываем скроллбары, прокрутка только колесиком мыши
         self.history_list.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.history_list.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         layout.addWidget(self.history_list)

@@ -1,7 +1,3 @@
-"""
-Менеджер модели для загрузки и управления языковыми моделями.
-Поддерживает валидацию, загрузку и генерацию текста.
-"""
 import os
 from typing import Dict, Any, Optional
 
@@ -13,9 +9,9 @@ try:
     from transformers.generation import GenerationMixin
     TRANSFORMERS_AVAILABLE = True
 except Exception as e:
-    torch = None  # type: ignore
-    GenerationConfig = None  # type: ignore
-    GenerationMixin = object  # type: ignore
+    torch = None
+    GenerationConfig = None
+    GenerationMixin = object
     TRANSFORMERS_AVAILABLE = False
     logger = get_logger('desktop.core.model_manager')
     logger.warning(f"Transformers недоступны: {e}")
@@ -24,21 +20,7 @@ logger = get_logger('desktop.core.model_manager')
 
 
 class ModelManager:
-    """
-    Менеджер для управления языковой моделью.
-    
-    Отвечает за валидацию, загрузку модели и генерацию текста.
-    Поддерживает fallback режим при отсутствии transformers.
-    """
-    
     def __init__(self, model_path: str, generation_params: Dict[str, Any]):
-        """
-        Инициализирует менеджер модели.
-        
-        Args:
-            model_path: Путь к директории с моделью
-            generation_params: Параметры генерации (temperature, top_p, etc.)
-        """
         self.model_path = model_path
         self.generation_params = generation_params or {}
         self.device: Optional[torch.device] = None
@@ -50,7 +32,6 @@ class ModelManager:
         
         if not self.is_fallback:
             try:
-                # Проверяем модель перед загрузкой
                 validation_result = self._validate_model()
                 if not validation_result['valid']:
                     self.load_error = validation_result['error']
@@ -66,12 +47,6 @@ class ModelManager:
             logger.warning("Используется fallback режим - transformers недоступны")
 
     def _validate_model(self) -> Dict[str, Any]:
-        """
-        Проверяет целостность модели перед загрузкой.
-        
-        Returns:
-            Словарь с ключами 'valid' (bool) и 'error' (str или None)
-        """
         resolved_path = os.path.abspath(self.model_path)
         logger.debug(f"Валидация модели по пути: {resolved_path}")
         
@@ -86,8 +61,6 @@ class ModelManager:
                 'valid': False,
                 'error': f'Путь к модели не является директорией: {resolved_path}'
             }
-        
-        # Проверяем наличие обязательных файлов
         required_files = ['config.json', 'tokenizer.json']
         missing_files = []
         for file in required_files:
@@ -101,7 +74,23 @@ class ModelManager:
                 'error': f'Отсутствуют обязательные файлы: {", ".join(missing_files)}'
             }
         
-        # Проверяем sharded модели (разбитые на части)
+        # Проверка доступной памяти
+        try:
+            import psutil
+            available_memory_gb = psutil.virtual_memory().available / (1024**3)
+            total_memory_gb = psutil.virtual_memory().total / (1024**3)
+            logger.info(f"Проверка памяти: {available_memory_gb:.2f} GB доступно из {total_memory_gb:.2f} GB")
+            
+            # Для модели ~20B параметров в float16 нужно минимум ~40GB
+            # Но с оффлоадингом на диск можно работать и с меньшей памятью
+            min_required_gb = 8.0  # Минимум для работы с оффлоадингом
+            if available_memory_gb < min_required_gb:
+                return {
+                    'valid': False,
+                    'error': f'Недостаточно памяти. Доступно: {available_memory_gb:.2f} GB, требуется минимум: {min_required_gb} GB. Рекомендуется закрыть другие приложения.'
+                }
+        except Exception as e:
+            logger.warning(f"Не удалось проверить память: {e}")
         index_file = os.path.join(resolved_path, 'model.safetensors.index.json')
         if os.path.exists(index_file):
             try:
@@ -111,7 +100,6 @@ class ModelManager:
                 
                 weight_map = index_data.get('weight_map', {})
                 if weight_map:
-                    # Получаем уникальные имена файлов из weight_map
                     required_shards = set(weight_map.values())
                     existing_files = set(os.listdir(resolved_path))
                     
@@ -130,8 +118,6 @@ class ModelManager:
                     'valid': False,
                     'error': f'Ошибка при проверке индекса модели: {str(e)}'
                 }
-        
-        # Проверяем наличие хотя бы одного файла модели
         model_files = [f for f in os.listdir(resolved_path) 
                       if f.endswith(('.safetensors', '.bin')) or f.startswith('pytorch_model')]
         if not model_files:
@@ -143,13 +129,6 @@ class ModelManager:
         return {'valid': True, 'error': None}
     
     def _load_resources(self) -> None:
-        """
-        Загружает токенизатор и модель в память.
-        
-        Raises:
-            FileNotFoundError: Если модель не найдена
-            Exception: При ошибках загрузки
-        """
         resolved_path = os.path.abspath(self.model_path)
         if not os.path.exists(resolved_path):
             error_msg = f'Модель не найдена по пути {resolved_path}'
@@ -168,41 +147,69 @@ class ModelManager:
 
         logger.info("Загрузка модели (это может занять время)...")
         try:
-            dtype = torch.float16 if torch.cuda.is_available() else torch.float32
-            device_map = 'auto' if torch.cuda.is_available() else None
-            logger.debug(f"Параметры загрузки: dtype={dtype}, device_map={device_map}")
+            # Оптимизация для работы с ограниченной памятью
+            import psutil
+            available_memory_gb = psutil.virtual_memory().available / (1024**3)
+            total_memory_gb = psutil.virtual_memory().total / (1024**3)
+            logger.info(f"Доступная память: {available_memory_gb:.2f} GB из {total_memory_gb:.2f} GB")
+            
+            # Для модели ~20B параметров в float16 нужно ~40GB
+            # С оффлоадингом можно работать с меньшей памятью, но медленно
+            # Рекомендуем использовать float16 и оффлоадинг на диск
+            dtype = torch.float16
+            device_map = 'auto' if torch.cuda.is_available() else 'cpu'
+            
+            # Параметры для экономии памяти
+            load_kwargs = {
+                'trust_remote_code': True,
+                'torch_dtype': dtype,
+                'low_cpu_mem_usage': True,  # Критично для экономии памяти
+            }
+            
+            if not torch.cuda.is_available():
+                # Для CPU: обязательный оффлоадинг на диск для больших моделей
+                offload_folder = os.path.join(os.path.dirname(resolved_path), '.model_offload')
+                os.makedirs(offload_folder, exist_ok=True)
+                load_kwargs['device_map'] = 'cpu'
+                load_kwargs['offload_folder'] = offload_folder
+                
+                # Ограничиваем использование памяти (оставляем запас для системы)
+                max_memory_gb = max(4, int(available_memory_gb * 0.75))  # Минимум 4GB, максимум 75% доступной
+                load_kwargs['max_memory'] = {'cpu': f'{max_memory_gb}GB'}
+                
+                logger.warning(f"ВНИМАНИЕ: Модель очень большая (~82GB). Используется оффлоадинг на диск.")
+                logger.warning(f"Это может работать МЕДЛЕННО. Рекомендуется минимум 32GB RAM для комфортной работы.")
+                logger.info(f"Оффлоадинг на диск: {offload_folder}")
+                logger.info(f"Максимальная память для модели: {max_memory_gb} GB")
+            else:
+                load_kwargs['device_map'] = device_map
+            
+            logger.debug(f"Параметры загрузки: {load_kwargs}")
+            logger.info("Начало загрузки модели... Это может занять много времени и памяти!")
             
             self.model = AutoModelForCausalLM.from_pretrained(
                 resolved_path,
-                trust_remote_code=True,
-                torch_dtype=dtype,
-                device_map=device_map
+                **load_kwargs
             )
         except Exception as e:
             logger.exception(f"Ошибка загрузки модели: {e}")
             raise
         
-        if not torch.cuda.is_available() or self.model.device.type == 'cpu':
+        if not torch.cuda.is_available() or (hasattr(self.model, 'device') and self.model.device.type == 'cpu'):
             self.device = torch.device('cpu')
-            self.model = self.model.to(self.device)
-            logger.info("Модель загружена на CPU")
+            if not hasattr(self.model, 'device') or self.model.device.type != 'cpu':
+                # Модель может использовать device_map с оффлоадингом
+                logger.info("Модель загружена на CPU с оффлоадингом")
+            else:
+                logger.info("Модель загружена на CPU")
         else:
-            self.device = next(self.model.parameters()).device
+            self.device = next(self.model.parameters()).device if hasattr(self.model, 'parameters') else torch.device('cpu')
             logger.info(f"Модель загружена на устройство: {self.device}")
         
         self.model.eval()
         logger.info(f"Модель успешно загружена и готова к использованию на {self.device}")
 
     def generate(self, prompt: str) -> str:
-        """
-        Генерирует ответ на основе промпта.
-        
-        Args:
-            prompt: Текст промпта для генерации
-        
-        Returns:
-            Сгенерированный текст
-        """
         if not prompt:
             logger.warning("Попытка генерации с пустым промптом")
             return 'Пожалуйста, введите вопрос.'
@@ -241,23 +248,11 @@ class ModelManager:
             return f'Произошла ошибка при генерации ответа: {str(e)}'
 
     def update_generation_params(self, params: Dict[str, Any]) -> None:
-        """
-        Обновляет параметры генерации.
-        
-        Args:
-            params: Словарь с новыми параметрами
-        """
         if params:
             self.generation_params.update(params)
             logger.debug(f"Обновлены параметры генерации: {params}")
 
     def get_metadata(self) -> Dict[str, Any]:
-        """
-        Возвращает метаданные о загруженной модели.
-        
-        Returns:
-            Словарь с информацией о модели (путь, устройство, dtype, etc.)
-        """
         if self.is_fallback or not self.model:
             return {
                 'model_path': 'fallback',
@@ -281,15 +276,6 @@ class ModelManager:
         }
 
     def _fallback_generate(self, prompt: str) -> str:
-        """
-        Генерирует ответ в fallback режиме (без реальной модели).
-        
-        Args:
-            prompt: Текст промпта
-        
-        Returns:
-            Сообщение о недоступности модели
-        """
         from desktop.utils.constants import FALLBACK_HISTORY_LIMIT
         
         prompt = prompt.strip()

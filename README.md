@@ -177,17 +177,17 @@
 All dependencies are listed in `requirements.txt`:
 
 ```
-PyQt5==5.15.10          # GUI framework
-torch==2.9.1            # Deep learning framework
-transformers==4.44.2    # Hugging Face transformers
-datasets==3.1.0         # Dataset handling
-accelerate==0.34.2      # Model acceleration
-peft==0.18.0            # Parameter-efficient fine-tuning
-psutil==5.9.8           # System monitoring
-fpdf2==2.8.1            # PDF generation
-matplotlib==3.9.2       # Plotting and visualization
-pytest==7.4.3           # Testing framework
-pytest-qt==4.2.0        # PyQt testing support
+PyQt5==5.15.10
+torch==2.9.1
+transformers==4.44.2
+datasets==3.1.0
+accelerate==0.34.2
+peft==0.18.0
+psutil==5.9.8
+fpdf2==2.8.1
+matplotlib==3.9.2
+pytest==7.4.3
+pytest-qt==4.2.0
 ```
 
 ### Optional Dependencies
@@ -209,13 +209,8 @@ pytest-qt==4.2.0        # PyQt testing support
 
 2. **Create a virtual environment (recommended):**
    ```bash
-   # Windows
    python -m venv venv
    venv\Scripts\activate
-
-   # Linux/macOS
-   python3 -m venv venv
-   source venv/bin/activate
    ```
 
 3. **Install dependencies:**
@@ -224,14 +219,21 @@ pytest-qt==4.2.0        # PyQt testing support
    pip install -r requirements.txt
    ```
 
-4. **Prepare model directory:**
+4. **Download or prepare model:**
+   
+   **Option A: Download from Hugging Face (Recommended)**
    ```bash
-   # Place your model files in the models/ directory
-   # Required files:
-   # - config.json
-   # - tokenizer.json
-   # - model files (.safetensors or .bin)
+   pip install huggingface_hub
+   python scripts/download_model.py
    ```
+   
+   **Option B: Manual download**
+   ```bash
+   Place your model files in the models/ directory
+   Required files: config.json, tokenizer.json, model files (.safetensors or .bin)
+   ```
+   
+   See [MODEL_STORAGE.md](MODEL_STORAGE.md) for detailed instructions on model storage and distribution.
 
 ### Method 2: Using pip (if available)
 
@@ -428,330 +430,223 @@ docker run -it etsets777/lls-m1
 Complete directory structure with detailed descriptions of all components:
 
 ```
-LLS_M1/                                    # Root directory
+LLS_M1/
 │
-├── 📂 desktop/                            # Main application package
-│   ├── __init__.py                        # Package initialization
-│   ├── main.py                            # 🚀 Application entry point - starts the GUI application
-│   ├── TODO.txt                           # Development todo list
-│   ├── IMPROVEMENTS.md                    # List of implemented improvements
-│   ├── NEXT_STEPS.md                      # Future development roadmap
-│   │
-│   ├── 📂 core/                           # Core functionality - model management
-│   │   ├── __init__.py
-│   │   ├── model_manager.py               # Model loading, validation, and generation
-│   │   │                                   # - Validates model files before loading
-│   │   │                                   # - Handles CPU/GPU device selection
-│   │   │                                   # - Manages tokenizer and model lifecycle
-│   │   │                                   # - Fallback mode for missing dependencies
-│   │   └── neural_network.py             # High-level neural network wrapper
-│   │                                       # - Builds prompts with system messages
-│   │                                       # - Coordinates model manager
-│   │                                       # - Updates generation parameters
-│   │
-│   ├── 📂 ui/                             # User interface components (PyQt5)
-│   │   ├── __init__.py
-│   │   ├── main_window.py                 # 🪟 Main application window
-│   │   │                                   # - Menu bar and status bar
-│   │   │                                   # - Window state management
-│   │   │                                   # - Theme application
-│   │   │                                   # - Resource cleanup on close
-│   │   ├── chat_widget.py                 # 💬 Chat interface widget
-│   │   │                                   # - Message input and display
-│   │   │                                   # - Thread-based response generation
-│   │   │                                   # - Tag management
-│   │   │                                   # - Draft auto-saving
-│   │   ├── styles.py                      # 🎨 Centralized UI styles
-│   │   │                                   # - Theme-based styling functions
-│   │   │                                   # - Eliminates code duplication
-│   │   ├── theme_manager.py               # Theme management and application
-│   │   │
-│   │   ├── 📂 settings/                    # Settings dialogs
-│   │   │   ├── __init__.py
-│   │   │   └── settings_dialog.py         # Main settings dialog
-│   │   │                                   # - Model path configuration
-│   │   │                                   # - Generation parameters
-│   │   │                                   # - Prompt editing
-│   │   │                                   # - Preset management
-│   │   │
-│   │   ├── 📂 history/                    # History management UI
-│   │   │   ├── __init__.py
-│   │   │   ├── history_dialog.py          # History viewing and search dialog
-│   │   │   │                               # - Message search
-│   │   │   │                               # - Tag filtering
-│   │   │   │                               # - Export functionality
-│   │   │   └── history_archive_dialog.py  # Archive management dialog
-│   │   │                                   # - View archived conversations
-│   │   │                                   # - Restore from archives
-│   │   │
-│   │   ├── 📂 dashboard/                  # Dashboard and statistics
-│   │   │   ├── __init__.py
-│   │   │   ├── dashboard_widget.py        # Dashboard widget (if exists)
-│   │   │   └── statistics_dialog.py      # Statistics display dialog
-│   │   │                                   # - Message counts
-│   │   │                                   # - Session statistics
-│   │   │                                   # - Plugin usage
-│   │   │
-│   │   ├── 📂 monitoring/                 # Resource monitoring UI
-│   │   │   ├── __init__.py
-│   │   │   └── monitor_dialog.py         # Resource monitor dialog
-│   │   │                                   # - Real-time CPU/GPU/RAM display
-│   │   │                                   # - Progress bars
-│   │   │
-│   │   ├── 📂 plugins/                    # Plugin management UI
-│   │   │   ├── __init__.py
-│   │   │   └── plugin_dialog.py          # Plugin configuration dialog
-│   │   │                                   # - Enable/disable plugins
-│   │   │                                   # - Plugin settings
-│   │   │
-│   │   ├── 📂 backup/                     # Backup UI
-│   │   │   ├── __init__.py
-│   │   │   └── backup_dialog.py          # Backup creation/restore dialog
-│   │   │
-│   │   ├── 📂 user/                       # User management UI
-│   │   │   ├── __init__.py
-│   │   │   ├── user_dialog.py            # User profile dialog
-│   │   │   └── user_admin_dialog.py      # Admin user management dialog
-│   │   │                                   # - Create/edit/delete users
-│   │   │                                   # - Role management
-│   │   │
-│   │   ├── 📂 widgets/                    # Reusable UI widgets
-│   │   │   ├── __init__.py
-│   │   │   └── status_panel.py           # Status bar panel widget
-│   │   │                                   # - Resource metrics display
-│   │   │                                   # - User info display
-│   │   │
-│   │   └── 📂 images/                      # UI icons and images
-│   │       ├── actions.png                # Actions button icon
-│   │       ├── backup.png                 # Backup button icon
-│   │       ├── clear.png                  # Clear button icon
-│   │       ├── history.png                # History button icon
-│   │       ├── monitor.png                # Monitor button icon
-│   │       ├── quick_actions.png          # Quick actions icon
-│   │       ├── settings.png               # Settings button icon
-│   │       └── theme.png                  # Theme toggle icon
-│   │
-│   ├── 📂 config/                         # Configuration management
-│   │   ├── __init__.py
-│   │   └── settings.py                    # ⚙️ Settings manager
-│   │                                       # - JSON configuration loading/saving
-│   │                                       # - Configuration validation
-│   │                                       # - Backup/restore functionality
-│   │                                       # - Batched saves for performance
-│   │                                       # - Caching for frequently accessed values
-│   │
-│   ├── 📂 utils/                          # Utility modules
-│   │   ├── __init__.py
-│   │   ├── logger.py                      # 📝 Centralized logging system
-│   │   │                                   # - File rotation (10MB, 5 backups)
-│   │   │                                   # - Separate error logs
-│   │   │                                   # - Console and file handlers
-│   │   ├── constants.py                   # 📌 Application constants
-│   │   │                                   # - UI sizes and colors
-│   │   │                                   # - Validation limits
-│   │   │                                   # - Timer intervals
-│   │   │                                   # - Threshold values
-│   │   ├── validators.py                  # ✅ Input validation utilities
-│   │   │                                   # - Path validation
-│   │   │                                   # - Message length validation
-│   │   │                                   # - Input sanitization
-│   │   ├── metrics.py                     # 📊 Performance metrics collector
-│   │   │                                   # - Response time tracking
-│   │   │                                   # - Success/failure rates
-│   │   │                                   # - Statistics calculation
-│   │   ├── draft_manager.py              # 💾 Draft message manager
-│   │   │                                   # - Auto-save unfinished messages
-│   │   │                                   # - Restore drafts on startup
-│   │   └── chat_history.py               # Chat history utilities
-│   │                                       # - Message storage
-│   │                                       # - History loading/saving
-│   │
-│   ├── 📂 plugins/                        # Plugin system
-│   │   ├── __init__.py
-│   │   ├── base.py                        # 🔌 Base plugin class
-│   │   │                                   # - Abstract plugin interface
-│   │   │                                   # - Required methods definition
-│   │   ├── manager.py                    # Plugin manager
-│   │   │                                   # - Plugin loading/enabling
-│   │   │                                   # - Role-based access control
-│   │   │                                   # - Plugin lifecycle management
-│   │   └── 📂 examples/                   # Example plugins
-│   │       ├── __init__.py
-│   │       ├── web_search.py             # Web search plugin example
-│   │       │                               # - Internet search functionality
-│   │       │                               # - Admin-only access
-│   │       └── knowledge_base.py         # Knowledge base plugin example
-│   │                                       # - Local article search
-│   │                                       # - Analyst/Admin access
-│   │
-│   ├── 📂 history/                        # History management
-│   │   ├── __init__.py
-│   │   ├── manager.py                    # 📚 History manager
-│   │   │                                   # - Message storage and retrieval
-│   │   │                                   # - Search functionality
-│   │   │                                   # - Tag-based filtering
-│   │   │                                   # - Automatic cleanup
-│   │   └── exporters.py                  # Export functionality
-│   │                                       # - JSON export
-│   │                                       # - Markdown export
-│   │                                       # - PDF export
-│   │
-│   ├── 📂 monitoring/                     # System monitoring
-│   │   ├── __init__.py
-│   │   └── system_monitor.py             # 📊 Resource monitor
-│   │                                       # - CPU/RAM usage tracking
-│   │                                       # - GPU memory monitoring
-│   │                                       # - Metrics logging
-│   │
-│   ├── 📂 training/                       # Model training pipeline
-│   │   ├── __init__.py
-│   │   ├── config.py                     # Training configuration dataclass
-│   │   ├── pipeline.py                   # 🔄 Training pipeline orchestrator
-│   │   │                                   # - Coordinates training process
-│   │   │                                   # - Dataset preparation
-│   │   │                                   # - Model training
-│   │   │                                   # - Evaluation
-│   │   ├── trainer.py                    # Model trainer
-│   │   │                                   # - Fine-tuning implementation
-│   │   │                                   # - LoRA support
-│   │   │                                   # - Checkpoint saving
-│   │   ├── dataset.py                    # Dataset handling
-│   │   │                                   # - Dataset loading
-│   │   │                                   # - Train/test splitting
-│   │   ├── evaluation.py                 # Model evaluation
-│   │   │                                   # - Metrics calculation
-│   │   │                                   # - Quality assessment
-│   │   ├── status.py                     # Training status tracking
-│   │   ├── utils.py                      # Training utilities
-│   │   │
-│   │   ├── 📂 configs/                   # Training configurations
-│   │   │   └── example.json              # Example training config
-│   │   │
-│   │   ├── 📂 scripts/                   # Training scripts
-│   │   │   ├── __init__.py
-│   │   │   ├── run_finetune.py          # Fine-tuning script
-│   │   │   └── plot_reports.py          # Report visualization script
-│   │   │
-│   │   └── 📂 reports/                    # Training reports
-│   │       ├── __init__.py
-│   │       ├── report_builder.py        # Report generation
-│   │       └── plotter.py               # Loss/accuracy plotting
-│   │
-│   ├── 📂 database/                       # Database layer
-│   │   ├── __init__.py
-│   │   ├── db.py                         # Database connection manager
-│   │   │                                   # - SQLite database setup
-│   │   │                                   # - Connection pooling
-│   │   ├── 📂 models/                     # Database models
-│   │   │   └── user.py                   # User model
-│   │   │                                   # - User schema definition
-│   │   └── 📂 repositories/               # Data access layer
-│   │       ├── __init__.py
-│   │       └── user_repository.py        # User repository
-│   │                                       # - CRUD operations
-│   │                                       # - User queries
-│   │
-│   ├── 📂 backup/                         # Backup system
-│   │   ├── __init__.py
-│   │   └── backup_manager.py            # 💾 Backup manager
-│   │                                       # - Backup creation
-│   │                                       # - Backup restoration
-│   │                                       # - Backup scheduling
-│   │
-│   ├── 📂 updater/                        # Update system
-│   │   ├── __init__.py
-│   │   └── update_manager.py            # 🔄 Update manager
-│   │                                       # - Model verification
-│   │                                       # - Integrity checking
-│   │                                       # - Auto-update (planned)
-│   │
-│   ├── 📂 shortcuts/                      # Keyboard shortcuts
-│   │   ├── __init__.py
-│   │   ├── actions.py                    # Quick actions manager
-│   │   │                                   # - Action registration
-│   │   │                                   # - Action execution
-│   │   └── quick_actions_dialog.py       # Quick actions dialog UI
-│   │
-│   ├── 📂 appearance/                     # Appearance customization
-│   │   ├── __init__.py
-│   │   └── palette_manager.py           # Color palette management
-│   │
-│   └── 📂 knowledge/                      # Knowledge base
-│       ├── __init__.py
-│       └── articles.json                 # Local knowledge articles
-│
-├── 📂 models/                             # Model files directory
-│   ├── config.json                        # Model configuration
-│   ├── tokenizer.json                     # Tokenizer file
-│   ├── tokenizer_config.json             # Tokenizer configuration
-│   ├── special_tokens_map.json           # Special tokens mapping
-│   ├── generation_config.json            # Generation configuration
-│   ├── model.safetensors.index.json      # Model shards index
-│   ├── model-*.safetensors               # Model weight files (sharded)
-│   ├── modelling_deepseek.py             # Model architecture
-│   ├── configuration_deepseek.py         # Model configuration class
-│   ├── gitattributes                      # Git attributes
-│   └── MISSING_FILES.txt                 # List of missing model files
-│
-├── 📂 data/                               # Application data directory
-│   ├── chat_history.json                 # Chat history storage
-│   ├── 📂 backups/                       # Backup files
-│   │   └── (backup files created here)
-│   ├── 📂 exports/                       # Exported conversations
-│   │   └── (JSON/Markdown/PDF exports)
-│   ├── 📂 archives/                     # Archived history
-│   │   └── (compressed archives)
-│   ├── 📂 database/                      # Database files
-│   │   └── app.db                        # SQLite database
-│   └── 📂 updater/                       # Updater data
-│       └── model_hashes.json             # Model file hashes
-│
-├── 📂 config/                             # Configuration files
-│   ├── config.json                        # Main configuration file
-│   └── config.json.backup                # Configuration backup
-│
-├── 📂 logs/                               # Log files
-│   ├── app.log                           # Main application log
-│   │                                     # - Rotates at 10MB
-│   │                                     # - Keeps 5 backups
-│   ├── errors.log                        # Error log (errors only)
-│   │                                     # - Separate error tracking
-│   └── metrics.log                       # System metrics log
-│                                         # - CPU/GPU/RAM usage
-│                                         # - Timestamped entries
-│
-├── 📂 tests/                              # Test suite
+├── 📂 desktop/
 │   ├── __init__.py
-│   ├── test_settings.py                  # Settings tests
-│   │                                     # - Config loading/saving
-│   │                                     # - Validation tests
-│   └── test_validators.py               # Validator tests
-│                                         # - Path validation
-│                                         # - Input sanitization
+│   ├── main.py
+│   ├── TODO.txt
+│   ├── IMPROVEMENTS.md
+│   ├── NEXT_STEPS.md
+│   │
+│   ├── 📂 core/
+│   │   ├── __init__.py
+│   │   ├── model_manager.py
+│   │   └── neural_network.py
+│   │
+│   ├── 📂 ui/
+│   │   ├── __init__.py
+│   │   ├── main_window.py
+│   │   ├── chat_widget.py
+│   │   ├── styles.py
+│   │   ├── theme_manager.py
+│   │   │
+│   │   ├── 📂 settings/
+│   │   │   ├── __init__.py
+│   │   │   └── settings_dialog.py
+│   │   │
+│   │   ├── 📂 history/
+│   │   │   ├── __init__.py
+│   │   │   ├── history_dialog.py
+│   │   │   └── history_archive_dialog.py
+│   │   │
+│   │   ├── 📂 dashboard/
+│   │   │   ├── __init__.py
+│   │   │   ├── dashboard_widget.py
+│   │   │   └── statistics_dialog.py
+│   │   │
+│   │   ├── 📂 monitoring/
+│   │   │   ├── __init__.py
+│   │   │   └── monitor_dialog.py
+│   │   │
+│   │   ├── 📂 plugins/
+│   │   │   ├── __init__.py
+│   │   │   └── plugin_dialog.py
+│   │   │
+│   │   ├── 📂 backup/
+│   │   │   ├── __init__.py
+│   │   │   └── backup_dialog.py
+│   │   │
+│   │   ├── 📂 user/
+│   │   │   ├── __init__.py
+│   │   │   ├── user_dialog.py
+│   │   │   └── user_admin_dialog.py
+│   │   │
+│   │   ├── 📂 widgets/
+│   │   │   ├── __init__.py
+│   │   │   └── status_panel.py
+│   │   │
+│   │   └── 📂 images/
+│   │       ├── actions.png
+│   │       ├── backup.png
+│   │       ├── clear.png
+│   │       ├── history.png
+│   │       ├── monitor.png
+│   │       ├── quick_actions.png
+│   │       ├── settings.png
+│   │       └── theme.png
+│   │
+│   ├── 📂 config/
+│   │   ├── __init__.py
+│   │   └── settings.py
+│   │
+│   ├── 📂 utils/
+│   │   ├── __init__.py
+│   │   ├── logger.py
+│   │   ├── constants.py
+│   │   ├── validators.py
+│   │   ├── metrics.py
+│   │   ├── draft_manager.py
+│   │   ├── chat_history.py
+│   │   └── model_downloader.py
+│   │
+│   ├── 📂 plugins/
+│   │   ├── __init__.py
+│   │   ├── base.py
+│   │   ├── manager.py
+│   │   └── 📂 examples/
+│   │       ├── __init__.py
+│   │       ├── web_search.py
+│   │       └── knowledge_base.py
+│   │
+│   ├── 📂 history/
+│   │   ├── __init__.py
+│   │   ├── manager.py
+│   │   └── exporters.py
+│   │
+│   ├── 📂 monitoring/
+│   │   ├── __init__.py
+│   │   └── system_monitor.py
+│   │
+│   ├── 📂 training/
+│   │   ├── __init__.py
+│   │   ├── config.py
+│   │   ├── pipeline.py
+│   │   ├── trainer.py
+│   │   ├── dataset.py
+│   │   │
+│   │   │
+│   │   ├── evaluation.py
+│   │   │
+│   │   │
+│   │   ├── status.py
+│   │   ├── utils.py
+│   │   │
+│   │   ├── 📂 configs/
+│   │   │   └── example.json
+│   │   │
+│   │   ├── 📂 scripts/
+│   │   │   ├── __init__.py
+│   │   │   ├── run_finetune.py
+│   │   │   └── plot_reports.py
+│   │   │
+│   │   └── 📂 reports/
+│   │       ├── __init__.py
+│   │       ├── report_builder.py
+│   │       └── plotter.py
+│   │
+│   ├── 📂 database/
+│   │   ├── __init__.py
+│   │   ├── db.py
+│   │   │
+│   │   │
+│   │   ├── 📂 models/
+│   │   │   └── user.py
+│   │   │
+│   │   └── 📂 repositories/
+│   │       ├── __init__.py
+│   │       └── user_repository.py
+│   │
+│   │
+│   │
+│   ├── 📂 backup/
+│   │   ├── __init__.py
+│   │   └── backup_manager.py
+│   │
+│   │
+│   │
+│   │
+│   ├── 📂 updater/
+│   │   ├── __init__.py
+│   │   └── update_manager.py
+│   │
+│   │
+│   │
+│   │
+│   ├── 📂 shortcuts/
+│   │   ├── __init__.py
+│   │   ├── actions.py
+│   │   │
+│   │   │
+│   │   └── quick_actions_dialog.py
+│   │
+│   ├── 📂 appearance/
+│   │   ├── __init__.py
+│   │   └── palette_manager.py
+│   │
+│   └── 📂 knowledge/
+│       ├── __init__.py
+│       └── articles.json
 │
-├── 📂 .github/                            # GitHub configuration
-│   └── 📂 workflows/                     # CI/CD workflows
-│       └── tests.yml                     # Automated testing workflow
-│                                         # - Multi-Python version testing
-│                                         # - Automated test runs
+├── 📂 models/
+│   ├── config.json
+│   ├── tokenizer.json
+│   ├── tokenizer_config.json
+│   ├── special_tokens_map.json
+│   ├── generation_config.json
+│   ├── model.safetensors.index.json
+│   ├── model-*.safetensors
+│   ├── modelling_deepseek.py
+│   ├── configuration_deepseek.py
+│   ├── gitattributes
+│   └── MISSING_FILES.txt
 │
-├── 📄 requirements.txt                    # Python dependencies
-│                                         # - PyQt5, PyTorch, Transformers
-│                                         # - Testing frameworks
-│                                         # - All required packages
+├── 📂 data/
+│   ├── chat_history.json
+│   ├── 📂 backups/
+│   │   └── (backup files created here)
+│   ├── 📂 exports/
+│   │   └── (JSON/Markdown/PDF exports)
+│   ├── 📂 archives/
+│   │   └── (compressed archives)
+│   ├── 📂 database/
+│   │   └── app.db
+│   └── 📂 updater/
+│       └── model_hashes.json
 │
-├── 📄 .editorconfig                       # Editor configuration
-│                                         # - Code style consistency
-│                                         # - Indentation rules
+├── 📂 config/
+│   ├── config.json
+│   └── config.json.backup
 │
-├── 📄 .gitignore                          # Git ignore rules
-│                                         # - Python cache files
-│                                         # - Model files
-│                                         # - Logs and data
+├── 📂 logs/
+│   ├── app.log
+│   ├── errors.log
+│   └── metrics.log
 │
-├── 📄 README.md                           # This file - project documentation
+├── 📂 tests/
+│   ├── __init__.py
+│   ├── test_settings.py
+│   └── test_validators.py
 │
-└── 📄 LICENSE                             # MIT License file
+├── 📂 .github/
+│   └── 📂 workflows/
+│       └── tests.yml
+│
+├── 📄 requirements.txt
+├── 📄 .editorconfig
+├── 📄 .gitignore
+├── 📄 README.md
+└── 📄 LICENSE
 ```
 
 ### Directory Descriptions
@@ -802,17 +697,10 @@ Main interface for interacting with language models.
 from desktop.core.neural_network import NeuralNetwork
 from desktop.config.settings import Settings
 
-# Initialize
 settings = Settings()
 nn = NeuralNetwork(settings=settings)
-
-# Generate response
 response = nn.generate_response("Hello, how are you?")
-
-# Update parameters
 nn.update_generation_params({"temperature": 0.7})
-
-# Reload model
 nn.reload_model()
 ```
 
@@ -824,12 +712,8 @@ Configuration management.
 from desktop.config.settings import Settings
 
 settings = Settings()
-
-# Get/Set values
 theme = settings.get_theme()
 settings.set_theme("dark")
-
-# Generation config
 gen_config = settings.get_generation_config()
 settings.update_generation_config({"temperature": 0.8})
 ```
@@ -842,11 +726,7 @@ Performance metrics tracking.
 from desktop.utils.metrics import get_metrics_collector
 
 metrics = get_metrics_collector()
-
-# Record a response
 metrics.record_response(response_time=2.5, success=True)
-
-# Get statistics
 stats = metrics.get_stats()
 print(f"Average response time: {stats['avg_response_time']}s")
 print(f"Success rate: {stats['success_rate']}%")
@@ -864,7 +744,6 @@ class MyCustomPlugin(Plugin):
     description = "Description of my plugin"
     
     def execute(self, input_text: str) -> str:
-        # Your plugin logic here
         return f"Processed: {input_text}"
 ```
 
@@ -879,7 +758,7 @@ class MyCustomPlugin(Plugin):
    git clone https://github.com/ETsETs777/LLS_M1.git
    cd LLS_M1
    python -m venv venv
-   source venv/bin/activate  # or venv\Scripts\activate on Windows
+   source venv/bin/activate
    pip install -r requirements.txt
    ```
 
@@ -907,29 +786,17 @@ Use `.editorconfig` for consistent formatting.
 ### Running Tests
 
 ```bash
-# Run all tests
 pytest
-
-# Run with coverage
 pytest --cov=desktop --cov-report=html
-
-# Run specific test file
 pytest tests/test_settings.py
-
-# Run with verbose output
 pytest -v
 ```
 
 ### Code Quality Tools
 
 ```bash
-# Format code
 black desktop/ tests/
-
-# Lint code
 flake8 desktop/ tests/
-
-# Type checking
 mypy desktop/
 ```
 
@@ -948,13 +815,8 @@ The project includes unit tests for:
 ### Running Tests
 
 ```bash
-# All tests
 pytest
-
-# Specific module
 pytest tests/test_settings.py
-
-# With coverage report
 pytest --cov=desktop --cov-report=term-missing
 ```
 

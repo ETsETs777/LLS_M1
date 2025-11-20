@@ -168,13 +168,13 @@ class SettingsDialog(QDialog):
         layout.addRow('Акцентный цвет', self.accent_combo)
 
         self.custom_accent_edit = QLineEdit()
-        self.custom_accent_edit.setPlaceholderText('#RRGGBB')
+        self.custom_accent_edit.setPlaceholderText('#0078d4')
         self.custom_accent_edit.textChanged.connect(self._update_accent_preview)
         layout.addRow('Пользовательский цвет', self.custom_accent_edit)
 
         self.accent_preview = QLabel()
         self.accent_preview.setFixedHeight(40)
-        self.accent_preview.setStyleSheet('border: 1px solid #d0d0d0; border-radius: 4px;')
+        self.accent_preview.setStyleSheet('border: 1px solid #ccc; border-radius: 4px;')
         layout.addRow('Предпросмотр', self.accent_preview)
 
     def _build_data_tab(self):
@@ -320,9 +320,9 @@ class SettingsDialog(QDialog):
     def _update_accent_preview(self):
         value = self._selected_accent_color()
         if value:
-            self.accent_preview.setStyleSheet(f'border:1px solid #d0d0d0; border-radius:4px; background-color: {value};')
+            self.accent_preview.setStyleSheet(f'border: 1px solid {value}; border-radius: 4px; background-color: {value};')
         else:
-            self.accent_preview.setStyleSheet('border:1px solid #d0d0d0; border-radius:4px; background: transparent;')
+            self.accent_preview.setStyleSheet('border: 1px solid #ccc; border-radius: 4px;')
 
     def _selected_accent_color(self) -> str:
         custom = self.custom_accent_edit.text().strip()

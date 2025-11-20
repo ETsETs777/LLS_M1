@@ -26,7 +26,7 @@ class HistoryExporter:
         Path(path).parent.mkdir(parents=True, exist_ok=True)
         lines = ['# История чата\n']
         for msg in messages:
-            lines.append(f"## {msg['role'].title()} ({msg['timestamp']})\n")
+            lines.append(f"## {msg['role'].title()} ({msg.get('timestamp', '')})\n")
             lines.append(f"{msg['content']}\n")
         with open(path, 'w', encoding='utf-8') as f:
             f.write('\n'.join(lines))

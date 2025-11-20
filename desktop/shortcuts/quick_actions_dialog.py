@@ -47,7 +47,7 @@ class QuickActionsDialog(QDialog):
         layout.addWidget(self.scroll)
 
         self.status_label = QLabel('')
-        self.status_label.setStyleSheet('color:#666;')
+        self.status_label.setStyleSheet('color: gray; font-size: 11px;')
         layout.addWidget(self.status_label)
 
     def _on_search_changed(self, text: str):
@@ -86,7 +86,7 @@ class QuickActionsDialog(QDialog):
         row = QHBoxLayout()
         row.setContentsMargins(0, 0, 0, 0)
         row_widget.setLayout(row)
-        info = QLabel(f"<b>{action.label}</b><br><span style='color:#666;'>{action.description}</span>")
+        info = QLabel(f"<b>{action.label}</b><br><span style='color: gray;'>{action.description}</span>")
         info.setWordWrap(True)
         button = QPushButton('▶')
         button.setFixedWidth(40)

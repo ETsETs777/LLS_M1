@@ -5,11 +5,11 @@ class PaletteManager:
     def __init__(self):
         self._options = [
             {'name': 'Azure', 'value': '#0078d4'},
-            {'name': 'Emerald', 'value': '#00a86b'},
-            {'name': 'Sunrise', 'value': '#f18f01'},
-            {'name': 'Ruby', 'value': '#c62828'},
-            {'name': 'Lavender', 'value': '#8e24aa'},
-            {'name': 'Slate', 'value': '#546e7a'}
+            {'name': 'Emerald', 'value': '#10b981'},
+            {'name': 'Sunrise', 'value': '#ff9800'},
+            {'name': 'Ruby', 'value': '#e53935'},
+            {'name': 'Lavender', 'value': '#9c27b0'},
+            {'name': 'Slate', 'value': '#64748b'},
         ]
 
     def options(self) -> List[Dict[str, str]]:

@@ -1,7 +1,4 @@
-"""
-Виджет чата для взаимодействия с нейросетью.
-Обеспечивает интерфейс для отправки сообщений и отображения ответов.
-"""
+
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QTextEdit, QLineEdit, QPushButton, 
     QHBoxLayout, QLabel, QMessageBox
@@ -35,22 +32,12 @@ from desktop.ui.styles import (
 logger = get_logger('desktop.ui.chat_widget')
 
 class ResponseThread(QThread):
-    """
-    Поток для генерации ответа нейросети.
     
-    Выполняет генерацию в отдельном потоке, чтобы не блокировать UI.
-    """
     response_ready = pyqtSignal(str)
     error_occurred = pyqtSignal(str)
     
     def __init__(self, neural_network: NeuralNetwork, user_input: str):
-        """
-        Инициализирует поток генерации.
         
-        Args:
-            neural_network: Экземпляр нейросети
-            user_input: Входное сообщение пользователя
-        """
         super().__init__()
         self.neural_network = neural_network
         self.user_input = user_input
@@ -58,12 +45,12 @@ class ResponseThread(QThread):
         self._start_time: Optional[float] = None
         
     def cancel(self) -> None:
-        """Отменяет выполнение генерации."""
+        
         self._is_cancelled = True
         logger.debug("Генерация ответа отменена")
         
     def run(self) -> None:
-        """Выполняет генерацию ответа в отдельном потоке."""
+        
         if self._is_cancelled:
             return
         
@@ -90,21 +77,10 @@ class ResponseThread(QThread):
                 self.error_occurred.emit(error_msg)
 
 class ChatWidget(QWidget):
-    """
-    Виджет чата для взаимодействия с нейросетью.
     
-    Предоставляет интерфейс для отправки сообщений, отображения истории
-    и управления тегами.
-    """
     
     def __init__(self, neural_network: NeuralNetwork, parent: Optional[QWidget] = None):
-        """
-        Инициализирует виджет чата.
         
-        Args:
-            neural_network: Экземпляр нейросети для генерации ответов
-            parent: Родительский виджет
-        """
         super().__init__(parent)
         self.neural_network = neural_network
         self.chat_history = ChatHistory()
@@ -125,45 +101,37 @@ class ChatWidget(QWidget):
         main_layout.setSpacing(0)
         self.setLayout(main_layout)
         
-        # Центральный контейнер для чата и ввода
         center_container = QWidget()
         center_layout = QVBoxLayout()
         center_layout.setContentsMargins(50, 20, 50, 20)
         center_layout.setSpacing(15)
         center_container.setLayout(center_layout)
         
-        # Добавляем растяжку сверху для центрирования
         main_layout.addStretch()
         
-        # Область чата без рамок
         self.chat_display = QTextEdit()
         self.chat_display.setReadOnly(True)
         self.chat_display.setPlaceholderText('Начните диалог с нейросетью...')
         self.chat_display.setAcceptRichText(True)
         self.chat_display.setFrameShape(QTextEdit.NoFrame)
-        # Скрываем скроллбары, прокрутка только колесиком мыши
         self.chat_display.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.chat_display.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         center_layout.addWidget(self.chat_display)
         
-        # Поле ввода без рамок
         self.input_field = QLineEdit()
         self.input_field.setPlaceholderText('Введите ваш вопрос...')
         self.input_field.returnPressed.connect(self.send_message)
         self.input_field.setFrame(False)
         center_layout.addWidget(self.input_field)
         
-        # Контейнер для кнопок и иконок
         buttons_container = QWidget()
         buttons_layout = QHBoxLayout()
         buttons_layout.setContentsMargins(0, 0, 0, 0)
         buttons_layout.setSpacing(8)
         buttons_container.setLayout(buttons_layout)
         
-        # Получаем путь к иконкам
         icons_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'ui', 'images')
         
-        # Добавляем иконки слева
         self.theme_button = QPushButton()
         self.theme_button.setFixedSize(ICON_BUTTON_SIZE, ICON_BUTTON_SIZE)
         self.theme_button.setToolTip('Переключить тему')
@@ -216,7 +184,6 @@ class ChatWidget(QWidget):
         
         buttons_layout.addStretch()
         
-        # Маленькие красивые кнопки справа
         self.send_button = QPushButton('Отправить')
         self.send_button.clicked.connect(self.send_message)
         self.send_button.setFixedHeight(SEND_BUTTON_HEIGHT)
@@ -231,23 +198,19 @@ class ChatWidget(QWidget):
         
         center_layout.addWidget(buttons_container)
         
-        # Скрытое поле для тегов
         self.tag_field = QLineEdit()
         self.tag_field.setPlaceholderText('Теги (через запятую)')
         self.tag_field.setFrame(False)
         self.tag_field.setVisible(False)
         center_layout.addWidget(self.tag_field)
         
-        # Подключаем переключение видимости поля тегов
         self.tag_button.toggled.connect(self.tag_field.setVisible)
         
         main_layout.addWidget(center_container)
         main_layout.addStretch()
         
-        # Применяем стили по умолчанию
         self._apply_default_styles()
         
-        # Применяем стили к иконкам
         icon_button_style = get_icon_button_style()
         self.theme_button.setStyleSheet(icon_button_style)
         self.clear_button.setStyleSheet(icon_button_style)
@@ -256,7 +219,7 @@ class ChatWidget(QWidget):
         self.actions_button.setStyleSheet(icon_button_style)
         
     def _apply_default_styles(self) -> None:
-        """Применяет стили по умолчанию (светлая тема)"""
+        
         theme = 'light'
         self.chat_display.setStyleSheet(get_chat_display_style(theme))
         self.input_field.setStyleSheet(get_input_field_style(theme))
@@ -266,14 +229,9 @@ class ChatWidget(QWidget):
         self.loading_label.setStyleSheet(get_loading_label_style(theme))
         
     def send_message(self) -> None:
-        """
-        Отправляет сообщение пользователя и запускает генерацию ответа.
         
-        Выполняет валидацию ввода перед отправкой.
-        """
         user_message = self.input_field.text().strip()
         
-        # Валидация ввода
         if not user_message:
             return
         
@@ -302,7 +260,6 @@ class ChatWidget(QWidget):
         self.input_field.setEnabled(False)
         self.show_loading_indicator()
         
-        # Очищаем черновик после отправки
         self.draft_manager.clear_draft()
         
         self.response_thread = ResponseThread(self.neural_network, user_message)
@@ -313,35 +270,17 @@ class ChatWidget(QWidget):
         logger.info(f"Отправлено сообщение длиной {len(user_message)} символов")
     
     def _validate_message(self, message: str) -> Optional[str]:
-        """
-        Валидирует сообщение пользователя.
         
-        Args:
-            message: Текст сообщения
-        
-        Returns:
-            Сообщение об ошибке или None если валидация прошла
-        """
         if len(message) > MAX_MESSAGE_LENGTH:
             return f'Сообщение слишком длинное. Максимальная длина: {MAX_MESSAGE_LENGTH} символов.'
         
-        # Проверка на потенциально опасные паттерны
         if '..' in message or message.startswith('/'):
-            # Базовая защита от path traversal и команд
             logger.warning(f"Обнаружен потенциально опасный паттерн в сообщении")
         
         return None
     
     def _validate_tags(self, tags: List[str]) -> Optional[str]:
-        """
-        Валидирует теги.
         
-        Args:
-            tags: Список тегов
-        
-        Returns:
-            Сообщение об ошибке или None если валидация прошла
-        """
         if len(tags) > MAX_TAGS_COUNT:
             return f'Слишком много тегов. Максимум: {MAX_TAGS_COUNT} тегов.'
         
@@ -371,21 +310,21 @@ class ChatWidget(QWidget):
     def add_user_message(self, message):
         timestamp = datetime.datetime.now().strftime('%H:%M')
         tags_html = self._format_tags(self.pending_tags)
-        formatted = f'<div style="margin: 15px 0; padding: 0;"><b style="color: #0078d4; font-size: 14px;">Вы</b> <span style="color: #999; font-size: 12px;">({timestamp})</span>{tags_html}<br><div style="padding: 8px 0; margin-top: 5px; color: #333; line-height: 1.6;">{self.escape_html(message)}</div></div>'
+        formatted = f'<div style="margin: 15px 0; padding: 0;"><b style="color: {COLOR_ACCENT};">Пользователь</b> <span style="color: {COLOR_TEXT_SECONDARY}; font-size: {FONT_SIZE_SMALL}px;">({timestamp})</span>{tags_html}<br>{self.escape_html(message)}</div>'
         self.chat_display.append(formatted)
         self.scroll_to_bottom()
         
     def add_bot_message(self, message, tags=None):
         timestamp = datetime.datetime.now().strftime('%H:%M')
         tags_html = self._format_tags(tags)
-        formatted = f'<div style="margin: 15px 0; padding: 0;"><b style="color: #28a745; font-size: 14px;">Нейросеть</b> <span style="color: #999; font-size: 12px;">({timestamp})</span>{tags_html}<br><div style="padding: 8px 0; margin-top: 5px; color: #333; line-height: 1.6;">{self.escape_html(message)}</div></div>'
+        formatted = f'<div style="margin: 15px 0; padding: 0;"><b style="color: {COLOR_SUCCESS};">Ассистент</b> <span style="color: {COLOR_TEXT_SECONDARY}; font-size: {FONT_SIZE_SMALL}px;">({timestamp})</span>{tags_html}<br>{self.escape_html(message)}</div>'
         self.chat_display.append(formatted)
         self.scroll_to_bottom()
         
     def add_error_message(self, error_msg, tags=None):
         timestamp = datetime.datetime.now().strftime('%H:%M')
         tags_html = self._format_tags(tags)
-        formatted = f'<div style="margin: 15px 0; padding: 0;"><b style="color: #dc3545; font-size: 14px;">Ошибка</b> <span style="color: #999; font-size: 12px;">({timestamp})</span>{tags_html}<br><div style="padding: 8px 0; margin-top: 5px; color: #c62828; line-height: 1.6;">{self.escape_html(error_msg)}</div></div>'
+        formatted = f'<div style="margin: 15px 0; padding: 0;"><b style="color: {COLOR_ERROR_DARK};">Ошибка</b> <span style="color: {COLOR_TEXT_SECONDARY}; font-size: {FONT_SIZE_SMALL}px;">({timestamp})</span>{tags_html}<br>{self.escape_html(error_msg)}</div>'
         self.chat_display.append(formatted)
         self.scroll_to_bottom()
         
@@ -398,7 +337,7 @@ class ChatWidget(QWidget):
         self.chat_display.setTextCursor(cursor)
         
     def show_loading_indicator(self) -> None:
-        """Показывает индикатор загрузки."""
+        
         self.loading_label.setVisible(True)
         self.loading_dots = 0
         self.loading_timer.start(LOADING_INDICATOR_INTERVAL)
@@ -414,28 +353,22 @@ class ChatWidget(QWidget):
         self.loading_label.setText(f'Нейросеть печатает{dots}')
         
     def clear_chat(self) -> None:
-        """Очищает чат и историю."""
+        
         logger.info("Очистка чата")
         self.chat_display.clear()
         self.chat_history.clear_history()
     
     def cleanup(self) -> None:
-        """
-        Очищает ресурсы виджета.
         
-        Останавливает активные потоки и таймеры.
-        """
         logger.debug("Очистка ресурсов ChatWidget")
         
-        # Останавливаем таймер
         if self.loading_timer.isActive():
             self.loading_timer.stop()
         
-        # Останавливаем поток генерации, если он активен
         if self.response_thread and self.response_thread.isRunning():
             logger.info("Остановка активного потока генерации")
             self.response_thread.cancel()
-            self.response_thread.wait(3000)  # Ждем до 3 секунд
+            self.response_thread.wait(3000)
             if self.response_thread.isRunning():
                 logger.warning("Поток не завершился, принудительное завершение")
                 self.response_thread.terminate()
@@ -453,13 +386,7 @@ class ChatWidget(QWidget):
                 self.add_bot_message(msg['content'], msg.get('tags', []))
                 
     def apply_theme(self, theme: str, stylesheet: str) -> None:
-        """
-        Применяет тему к виджету.
         
-        Args:
-            theme: Название темы ('light' или 'dark')
-            stylesheet: Общий stylesheet для родительского виджета
-        """
         self.setStyleSheet(stylesheet)
         self.chat_display.setStyleSheet(get_chat_display_style(theme))
         self.input_field.setStyleSheet(get_input_field_style(theme))
@@ -469,12 +396,12 @@ class ChatWidget(QWidget):
         self.loading_label.setStyleSheet(get_loading_label_style(theme))
 
     def _on_input_changed(self, text: str) -> None:
-        """Обработчик изменения текста в поле ввода (автосохранение черновика)."""
+        
         tags = self._current_tags()
         self.draft_manager.save_draft(text, tags)
     
     def _load_draft(self) -> None:
-        """Загружает черновик при инициализации."""
+        
         message, tags = self.draft_manager.load_draft()
         if message:
             self.input_field.setText(message)
@@ -484,7 +411,7 @@ class ChatWidget(QWidget):
                 self.tag_button.setChecked(True)
     
     def _current_tags(self) -> List[str]:
-        """Возвращает текущие теги из поля."""
+        
         raw = self.tag_field.text().strip()
         if not raw:
             return []
@@ -493,5 +420,5 @@ class ChatWidget(QWidget):
     def _format_tags(self, tags):
         if not tags:
             return ''
-        tags_str = ' '.join(f'#{self.escape_html(tag)}' for tag in tags)
-        return f' <span style="color:#999; font-size:0.85em;">{tags_str}</span>'
+        tags_str = ' '.join(f'<span style="background: {COLOR_ACCENT}; color: white; padding: 2px 6px; border-radius: 4px; font-size: {FONT_SIZE_SMALL}px; margin-right: 4px;">{tag}</span>' for tag in tags)
+        return f' <span style="color: {COLOR_TEXT_SECONDARY}; font-size: {FONT_SIZE_SMALL}px;">{tags_str}</span>'
