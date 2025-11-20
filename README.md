@@ -957,19 +957,7 @@ Contributions are welcome! Please follow these guidelines:
 - Focus on constructive feedback
 
 ---
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
-
-## 🙏 Acknowledgments
-
-- **PyQt5** - GUI framework
-- **Hugging Face** - Transformers library
-- **PyTorch** - Deep learning framework
-- **All Contributors** - Thanks to everyone who contributed!
+Не пытайтесь регать на пк с меньше чем 32 гб опры 
 
 ---
 

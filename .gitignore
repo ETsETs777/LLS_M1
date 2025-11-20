@@ -70,3 +70,7 @@ htmlcov/
 # Training
 training_runs/
 *.ckpt
+
+*.backup
+*.safetensors.backup
+.model_offload/
