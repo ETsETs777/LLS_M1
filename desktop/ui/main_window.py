@@ -44,6 +44,11 @@ class MainWindow(QMainWindow):
         self.theme_manager.set_accent_color(self.settings.get_accent_color())
         self.neural_network = NeuralNetwork(settings=self.settings)
         self.user_repository = user_repository
+        
+        # Флаг для показа диалога загрузки модели
+        self._should_show_loading_dialog = False
+        if hasattr(self.neural_network, 'model_manager') and self.neural_network.model_manager.is_fallback:
+            self._should_show_loading_dialog = True
         self.history_manager = HistoryManager(self.settings)
         self.history_manager.cleanup_old_records()
         base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
@@ -77,6 +82,10 @@ class MainWindow(QMainWindow):
         logger.info("MainWindow инициализирован")
         self._update_training_status_label()
         self._update_dashboard_metrics()
+        
+        # Показываем диалог загрузки модели после инициализации UI
+        if self._should_show_loading_dialog:
+            QTimer.singleShot(1000, self._show_model_loading_dialog)
         
     def init_ui(self):
         self.setWindowTitle('Нейросеть Чат')
@@ -419,10 +428,29 @@ class MainWindow(QMainWindow):
         self.status_bar.showMessage('Мониторинг обновлён')
         self._update_dashboard_metrics()
 
+    def _show_model_loading_dialog(self):
+        """Показывает диалог загрузки модели"""
+        try:
+            from desktop.ui.model_loading_dialog import ModelLoadingDialog
+            dialog = ModelLoadingDialog(self.neural_network.model_manager, self)
+            dialog.exec_()
+            # После закрытия диалога проверяем, загрузилась ли модель
+            if not self.neural_network.model_manager.is_fallback:
+                QMessageBox.information(
+                    self, 
+                    'Модель загружена', 
+                    'Нейросеть успешно загружена и готова к работе!'
+                )
+        except Exception as e:
+            logger.exception(f"Ошибка показа диалога загрузки модели: {e}")
+    
     def reload_model(self):
         try:
-            self.neural_network.reload_model()
-            QMessageBox.information(self, 'Модель перезагружена', 'Модель успешно перезагружена.')
+            from desktop.ui.model_loading_dialog import ModelLoadingDialog
+            dialog = ModelLoadingDialog(self.neural_network.model_manager, self)
+            dialog.exec_()
+            if not self.neural_network.model_manager.is_fallback:
+                QMessageBox.information(self, 'Модель перезагружена', 'Модель успешно перезагружена.')
         except Exception as exc:
             QMessageBox.critical(self, 'Ошибка перезагрузки', str(exc))
 

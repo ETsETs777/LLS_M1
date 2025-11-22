@@ -16,12 +16,24 @@ try:
     from transformers import AutoTokenizer, AutoModelForCausalLM, GenerationConfig
     from transformers.generation import GenerationMixin
     TRANSFORMERS_AVAILABLE = True
-except ImportError as e:
+except ImportError:
     # Если модуль не найден - это нормально для fallback режима
-    pass
+    TRANSFORMERS_AVAILABLE = False
 except Exception as e:
     # Другие ошибки (включая DLL ошибки) - логируем, но продолжаем работу
-    pass
+    # Проверяем, что это действительно проблема, а не просто предупреждение
+    error_str = str(e).lower()
+    if 'dll' in error_str or 'error loading' in error_str:
+        # Пробуем еще раз - иногда это ложное срабатывание
+        try:
+            import torch
+            from transformers import AutoTokenizer, AutoModelForCausalLM, GenerationConfig
+            from transformers.generation import GenerationMixin
+            TRANSFORMERS_AVAILABLE = True
+        except:
+            TRANSFORMERS_AVAILABLE = False
+    else:
+        TRANSFORMERS_AVAILABLE = False
 
 # Создаем logger после попытки импорта
 logger = get_logger('desktop.core.model_manager')
