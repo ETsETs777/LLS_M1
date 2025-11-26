@@ -53,6 +53,7 @@ class ModelManager:
         self.is_fallback = not TRANSFORMERS_AVAILABLE
         self.fallback_history: list = []
         self.load_error: Optional[str] = None
+        self.partial_model_warning: Optional[str] = None
         
         if not self.is_fallback:
             try:
@@ -62,6 +63,9 @@ class ModelManager:
                     logger.error(f"Ошибка проверки модели: {validation_result['error']}")
                     self.is_fallback = True
                 else:
+                    warning = validation_result.get('warning')
+                    if warning:
+                        logger.warning(warning)
                     self._load_resources()
             except Exception as e:
                 self.load_error = str(e)
@@ -138,9 +142,17 @@ class ModelManager:
                             missing_shards.append(shard)
                     
                     if missing_shards:
+                        warning_msg = (
+                            'Модель неполная. Отсутствуют файлы: '
+                            f'{", ".join(sorted(missing_shards)[:5])}'
+                            f'{"..." if len(missing_shards) > 5 else ""} '
+                            f'({len(missing_shards)} из {len(required_shards)})'
+                        )
+                        self.partial_model_warning = warning_msg
                         return {
-                            'valid': False,
-                            'error': f'Модель неполная. Отсутствуют файлы: {", ".join(sorted(missing_shards)[:5])}{"..." if len(missing_shards) > 5 else ""} ({len(missing_shards)} из {len(required_shards)})'
+                            'valid': True,
+                            'error': None,
+                            'warning': warning_msg
                         }
             except Exception as e:
                 return {
@@ -155,7 +167,7 @@ class ModelManager:
                 'error': 'Не найдены файлы весов модели (.safetensors или .bin)'
             }
         
-        return {'valid': True, 'error': None}
+        return {'valid': True, 'error': None, 'warning': None}
     
     def _load_resources(self) -> None:
         resolved_path = os.path.abspath(self.model_path)
@@ -191,7 +203,7 @@ class ModelManager:
             # Параметры для экономии памяти
             load_kwargs = {
                 'trust_remote_code': True,
-                'dtype': dtype,  # Используем dtype вместо устаревшего torch_dtype
+                'torch_dtype': dtype,
                 'low_cpu_mem_usage': True,  # Критично для экономии памяти
             }
             
@@ -281,7 +293,9 @@ class ModelManager:
                 'dtype': 'N/A',
                 'context_length': 0,
                 'vocab_size': 0,
-                'fallback': True
+                'fallback': True,
+                'partial_model': bool(self.partial_model_warning),
+                'warning': self.partial_model_warning
             }
         config = getattr(self.model, 'config', None)
         context = None
@@ -293,7 +307,9 @@ class ModelManager:
             'dtype': str(getattr(self.model, 'dtype', 'unknown')),
             'context_length': context,
             'vocab_size': getattr(config, 'vocab_size', None),
-            'fallback': False
+            'fallback': False,
+            'partial_model': bool(self.partial_model_warning),
+            'warning': self.partial_model_warning
         }
 
     def _fallback_generate(self, prompt: str) -> str:

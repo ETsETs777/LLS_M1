@@ -2,7 +2,7 @@ import json
 import os
 from collections import Counter
 from datetime import datetime, date
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Any
 
 from PyQt5.QtCore import QTimer, Qt
 from PyQt5.QtWidgets import QMainWindow, QVBoxLayout, QWidget, QPushButton, QAction, QStatusBar, QMessageBox, QLabel, QHBoxLayout, QMenu

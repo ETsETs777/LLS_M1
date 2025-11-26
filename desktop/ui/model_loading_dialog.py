@@ -19,33 +19,36 @@ class ModelLoadingThread(QThread):
         super().__init__()
         self.model_manager = model_manager
         self.is_cancelled = False
+        # Библиотеки должны быть импортированы в главном потоке
+        # Здесь мы только используем их
+        self._torch_available = False
+        self._transformers_available = False
+        self._torch_version = None
     
     def run(self):
         try:
-            # Проверяем доступность библиотек
-            self.progress_signal.emit("Проверка доступности библиотек...")
-            import sys
-            import importlib
-            
-            # Пытаемся импортировать torch
-            try:
-                import torch
-                self.progress_signal.emit(f"[OK] PyTorch {torch.__version__} доступен")
-            except Exception as e:
-                error_msg = f"PyTorch недоступен: {str(e)}"
+            # Проверяем, что библиотеки были загружены в главном потоке
+            if not getattr(self, '_torch_available', False):
+                error_msg = "PyTorch не был загружен в главном потоке. Перезапустите приложение."
                 self.error_signal.emit(error_msg)
                 self.finished_signal.emit(False, error_msg)
                 return
             
-            # Пытаемся импортировать transformers
-            try:
-                from transformers import AutoTokenizer, AutoModelForCausalLM
-                self.progress_signal.emit("[OK] Transformers библиотека доступна")
-            except Exception as e:
-                error_msg = f"Transformers недоступен: {str(e)}"
+            version = getattr(self, '_torch_version', 'unknown')
+            self.progress_signal.emit(f"[OK] PyTorch {version} доступен (загружен ранее)")
+            
+            if not getattr(self, '_transformers_available', False):
+                error_msg = "Transformers не был загружен в главном потоке. Перезапустите приложение."
                 self.error_signal.emit(error_msg)
                 self.finished_signal.emit(False, error_msg)
                 return
+            
+            self.progress_signal.emit("[OK] Transformers библиотека доступна (загружена ранее)")
+            
+            # Библиотеки уже импортированы в главном потоке, просто используем их
+            # Но для уверенности, импортируем еще раз (это безопасно если уже импортированы)
+            import torch
+            from transformers import AutoTokenizer, AutoModelForCausalLM
             
             resolved_path = os.path.abspath(self.model_manager.model_path)
             self.progress_signal.emit(f"Путь к модели: {resolved_path}")
@@ -56,10 +59,9 @@ class ModelLoadingThread(QThread):
             start_time = time.time()
             
             try:
-                import torch
-                from transformers import AutoTokenizer
+                resolved_path = os.path.abspath(self.model_manager.model_path)
+                self.progress_signal.emit(f"Путь к модели: {resolved_path}")
                 
-                self.progress_signal.emit(f"Импорт библиотек завершен")
                 self.model_manager.tokenizer = AutoTokenizer.from_pretrained(
                     resolved_path, 
                     trust_remote_code=True
@@ -81,14 +83,12 @@ class ModelLoadingThread(QThread):
             self.progress_signal.emit("Пожалуйста, не закрывайте приложение...")
             
             import psutil
-            import torch
             available_memory_gb = psutil.virtual_memory().available / (1024**3)
             self.progress_signal.emit(f"Доступная память: {available_memory_gb:.2f} GB")
             
             try:
-                from transformers import AutoModelForCausalLM
-                
                 self.progress_signal.emit("Начало загрузки весов модели...")
+                self.progress_signal.emit("Загрузка может занять много времени, подождите...")
                 model_start = time.time()
                 
                 model = AutoModelForCausalLM.from_pretrained(
@@ -98,6 +98,7 @@ class ModelLoadingThread(QThread):
                     low_cpu_mem_usage=True
                 )
                 
+                self.progress_signal.emit("Перемещение модели на CPU...")
                 model = model.to('cpu')
                 model.eval()
                 
@@ -108,15 +109,19 @@ class ModelLoadingThread(QThread):
                 elapsed = time.time() - model_start
                 total_time = time.time() - start_time
                 
-                self.progress_signal.emit(f"[OK] Модель загружена успешно!")
-                self.progress_signal.emit(f"Время загрузки модели: {elapsed/60:.1f} минут")
-                self.progress_signal.emit(f"Общее время: {total_time/60:.1f} минут")
+                self.progress_signal.emit("=" * 60)
+                self.progress_signal.emit("[OK] МОДЕЛЬ ЗАГРУЖЕНА УСПЕШНО!")
+                self.progress_signal.emit("=" * 60)
+                self.progress_signal.emit(f"Время загрузки модели: {elapsed/60:.1f} минут ({elapsed:.0f} секунд)")
+                self.progress_signal.emit(f"Общее время: {total_time/60:.1f} минут ({total_time:.0f} секунд)")
                 
                 self.finished_signal.emit(True, "Модель успешно загружена!")
                 
             except Exception as e:
                 error_msg = f"Ошибка загрузки модели: {str(e)}"
                 self.error_signal.emit(error_msg)
+                import traceback
+                self.error_signal.emit(f"Детали: {traceback.format_exc()}")
                 self.finished_signal.emit(False, error_msg)
                 
         except Exception as e:
@@ -132,10 +137,42 @@ class ModelLoadingDialog(QDialog):
         super().__init__(parent)
         self.model_manager = model_manager
         self.loading_thread: Optional[ModelLoadingThread] = None
+        self.torch_available = False
+        self.transformers_available = False
+        
+        # ИМПОРТИРУЕМ В ГЛАВНОМ ПОТОКЕ ДО создания диалога
+        self._preload_libraries()
+        
         self.setWindowTitle("Загрузка нейросети")
         self.setMinimumSize(600, 400)
         self.setModal(True)
         self.init_ui()
+    
+    def _preload_libraries(self):
+        """Предварительная загрузка библиотек в главном потоке (уже должны быть загружены в main.py)"""
+        # Библиотеки уже должны быть импортированы в main.py ДО создания QApplication
+        # Здесь просто проверяем их доступность
+        try:
+            import torch
+            self.torch_available = True
+            self.torch_version = torch.__version__
+            logger.info(f"PyTorch {torch.__version__} доступен (уже загружен в main.py)")
+        except Exception as e:
+            self.torch_available = False
+            self.torch_error = str(e)
+            logger.error(f"PyTorch недоступен: {e}")
+            logger.error("PyTorch должен быть импортирован в main.py ДО создания QApplication!")
+            return
+        
+        try:
+            from transformers import AutoTokenizer, AutoModelForCausalLM
+            self.transformers_available = True
+            logger.info("Transformers доступен (уже загружен в main.py)")
+        except Exception as e:
+            self.transformers_available = False
+            self.transformers_error = str(e)
+            logger.error(f"Transformers недоступен: {e}")
+            logger.error("Transformers должен быть импортирован в main.py ДО создания QApplication!")
         
     def init_ui(self):
         layout = QVBoxLayout()
@@ -144,7 +181,7 @@ class ModelLoadingDialog(QDialog):
         self.setLayout(layout)
         
         # Заголовок
-        title = QLabel("Загрузка нейросети GigaChat-20B-A3B-instruct")
+        title = QLabel("Загрузка нейросети LOM")
         title_font = QFont()
         title_font.setPointSize(14)
         title_font.setBold(True)
@@ -187,7 +224,35 @@ class ModelLoadingDialog(QDialog):
     def start_loading(self):
         """Начинает загрузку модели в отдельном потоке"""
         self.add_log("Инициализация загрузки модели...")
+        self.add_log("Проверка доступности библиотек...")
+        
+        # Используем предварительно загруженные библиотеки
+        if not self.torch_available:
+            error_msg = f"PyTorch недоступен: {getattr(self, 'torch_error', 'Неизвестная ошибка')}"
+            self.add_error(error_msg)
+            self.add_error("РЕШЕНИЕ: Установите Visual C++ Redistributable 2015-2022")
+            self.add_error("Скачайте с: https://aka.ms/vs/17/release/vc_redist.x64.exe")
+            self.loading_finished(False, error_msg)
+            return
+        
+        self.add_log(f"[OK] PyTorch {self.torch_version} доступен (загружен в главном потоке)")
+        
+        if not self.transformers_available:
+            error_msg = f"Transformers недоступен: {getattr(self, 'transformers_error', 'Неизвестная ошибка')}"
+            self.add_error(error_msg)
+            self.loading_finished(False, error_msg)
+            return
+        
+        self.add_log("[OK] Transformers библиотека доступна (загружена в главном потоке)")
+        
+        # Передаем информацию о доступности в поток
         self.loading_thread = ModelLoadingThread(self.model_manager)
+        self.loading_thread._torch_available = self.torch_available
+        self.loading_thread._transformers_available = self.transformers_available
+        if self.torch_available:
+            import torch
+            self.loading_thread._torch_version = torch.__version__
+        
         self.loading_thread.progress_signal.connect(self.add_log)
         self.loading_thread.error_signal.connect(self.add_error)
         self.loading_thread.finished_signal.connect(self.loading_finished)

@@ -28,7 +28,7 @@ class StatisticsDialog(QDialog):
         close_button = QPushButton('Закрыть')
         close_button.setFixedHeight(36)
         close_button.setFixedWidth(100)
-        close_button.setStyleSheet()
+        close_button.setStyleSheet('font-size: 14px;')
         close_button.clicked.connect(self.accept)
         button_layout.addWidget(close_button)
         layout.addLayout(button_layout)
